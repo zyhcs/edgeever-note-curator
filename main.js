@@ -552,35 +552,103 @@ function drawNetworkGraph(canvas, currentTitle, relatedItems, onNodeClick) {
 // ==================== 6. 插件主逻辑与 UI 控制台 ====================
 
 export default {
-  onload(context) {
+  activate(context) {
     let modalEl = null;
     let currentNote = null;
     let vaultNotes = [];
     let formattedCache = "";
 
-    // 1. 注册右下角 Dock 工具坞按钮
-    if (context.ui?.addDockItem) {
-      context.ui.addDockItem({
-        id: "org.edgeever.note-curator.dock",
-        title: "笔记管家与体检 (Note Curator)",
-        icon: `
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-          </svg>
-        `,
-        onClick: () => openCuratorModal(),
-      });
+    // 1. 统一插件工具坞 (Plugin Dock) 与悬浮入口按钮
+    function getOrCreatePluginDock() {
+      let dock = document.getElementById("edgeever-plugins-dock");
+      if (!dock) {
+        dock = document.createElement("div");
+        dock.id = "edgeever-plugins-dock";
+        dock.className = "edgeever-plugins-dock";
+        document.body.appendChild(dock);
+      }
+      return dock;
     }
 
-    // 2. 注册命令 (Command Palette)
-    if (context.ui?.addCommand) {
-      context.ui.addCommand({
-        id: "curator:open",
-        name: "笔记管家: 开启当前笔记健康体检与智能整理",
-        shortcut: "Mod-Shift-C",
-        callback: () => openCuratorModal(),
-      });
+    let currentBtn = null;
+    function cleanupButton() {
+      if (currentBtn) {
+        try {
+          currentBtn.remove();
+        } catch (e) {}
+        currentBtn = null;
+      }
+      document
+        .querySelectorAll("#edgeever-note-curator-btn, .edgeever-note-curator-dock-btn")
+        .forEach((b) => b.remove());
     }
+
+    function ensureButtonMounted() {
+      if (currentBtn && currentBtn.isConnected) return;
+      const existing = document.getElementById("edgeever-note-curator-btn");
+      if (existing && existing.isConnected) {
+        currentBtn = existing;
+        return;
+      }
+      cleanupButton();
+
+      const dock = getOrCreatePluginDock();
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "edgeever-note-curator-btn";
+      btn.className = "edgeever-note-curator-dock-btn";
+      btn.title = "笔记管家与体检 (Note Curator - Mod+Shift+C)";
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+        </svg>
+      `;
+      btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openCuratorModal();
+      };
+      dock.appendChild(btn);
+      currentBtn = btn;
+    }
+
+    // 2. 注册系统原生 Dock 扩展项（若宿主环境支持）
+    if (context.ui?.addDockItem) {
+      try {
+        context.ui.addDockItem({
+          id: "org.edgeever.note-curator.dock",
+          title: "笔记管家与体检 (Note Curator)",
+          icon: `
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+            </svg>
+          `,
+          onClick: () => openCuratorModal(),
+        });
+      } catch (e) {}
+    }
+
+    // 3. 注册命令 (Command Palette: Mod-Shift-C)
+    if (context.ui?.addCommand) {
+      try {
+        context.ui.addCommand({
+          id: "curator:open",
+          name: "笔记管家: 开启当前笔记健康体检与智能整理",
+          shortcut: "Mod-Shift-C",
+          callback: () => openCuratorModal(),
+        });
+      } catch (e) {}
+    }
+
+    let timer = null;
+    const observer = new MutationObserver(() => {
+      if (currentBtn && currentBtn.isConnected) return;
+      clearTimeout(timer);
+      timer = setTimeout(ensureButtonMounted, 350);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(ensureButtonMounted, 300);
 
     /**
      * 获取当前活动的活跃笔记
@@ -1142,11 +1210,20 @@ export default {
         modalEl = null;
       }, 200);
     }
+
+    return () => {
+      observer.disconnect();
+      cleanupButton();
+      closeModal();
+      const el = document.querySelector(".ee-curator-backdrop");
+      if (el) el.remove();
+    };
   },
 
-  onunload() {
-    // 卸载清理
+  deactivate() {
     const el = document.querySelector(".ee-curator-backdrop");
     if (el) el.remove();
+    const btn = document.getElementById("edgeever-note-curator-btn");
+    if (btn) btn.remove();
   },
 };
