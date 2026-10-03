@@ -2,7 +2,7 @@
   "type": "plugin",
   "id": "org.edgeever.plugins.note-curator",
   "name": "Note Curator",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "apiVersion": "2",
   "settingsUi": "host",
   "description": "All-in-one AI & Local PKM Assistant for EdgeEver: Health check & review, one-click layout & markdown formatting, content expansion, tag governance, and knowledge network linking.",

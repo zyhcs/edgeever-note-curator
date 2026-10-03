@@ -35,9 +35,12 @@ function formatDate(isoOrTs) {
   }
 }
 
-// 常见技术停用词表
+// 常见停用词表与编程噪音过滤
 const STOP_WORDS = new Set([
-  "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好", "自己", "这", "那", "如何", "怎么", "通过", "进行", "使用", "支持", "可以", "以及", "并且", "实现", "或者", "为了", "如果", "对于", "关于", "本文", "主要", "其中", "因此", "由于", "我们", "需要", "根据", "作为", "完成", "基于", "包含", "以下", "当前", "用于", "相关", "采用", "提供", "同时", "this", "that", "with", "from", "have", "been", "were", "what", "when", "where", "which", "there", "their", "about", "would", "these", "other", "into", "more", "first", "also", "after", "could", "some", "time", "then", "like", "will"
+  "的", "了", "在", "是", "我", "有", "和", "就", "不", "人", "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去", "你", "会", "着", "没有", "看", "好", "自己", "这", "那", "如何", "怎么", "通过", "进行", "使用", "支持", "可以", "以及", "并且", "实现", "或者", "为了", "如果", "对于", "关于", "本文", "主要", "其中", "因此", "由于", "我们", "需要", "根据", "作为", "完成", "基于", "包含", "以下", "当前", "用于", "相关", "采用", "提供", "同时", "接着", "然后", "因为", "所以", "但是", "而且", "不过", "另外", "部分", "方式", "方法", "情况", "问题", "内容", "结果", "时间", "之后", "之前",
+  "this", "that", "with", "from", "have", "been", "were", "what", "when", "where", "which", "there", "their", "about", "would", "these", "other", "into", "more", "first", "also", "after", "could", "some", "time", "then", "like", "will", "true", "false", "null", "undefined",
+  "var", "let", "const", "function", "return", "type", "string", "int", "bool", "char", "data", "end", "begin", "select", "from", "where", "table", "field", "code", "line", "item", "list", "array", "test", "demo", "temp", "val", "res", "msg", "err", "opt", "obj", "param", "arg", "index", "key", "value", "text", "body", "head", "name", "file", "path", "user", "root", "node", "self",
+  "lv", "ls", "lt", "gv", "gs", "gt", "iv", "ev", "cv", "rv", "it", "wa", "st", "msgv1", "msgv2", "msgv3", "msgv4", "subrc", "sy", "rc", "len", "ptr", "pos", "num", "cnt", "str", "buf", "col", "row", "idx", "flag", "args", "argv", "temp", "tmp", "ret", "resp", "req", "cb", "fn", "fn1", "func", "stmt", "conn", "exec", "attr"
 ]);
 
 // ==================== 2. 盘古之白与本地排版规范引擎 ====================
@@ -366,61 +369,143 @@ function auditNote(note, allVaultNotes = []) {
 // ==================== 4. 知识网络关联与相似度引擎 ====================
 
 /**
- * 提取文本关键词（去除停用词与标点）
+ * 从笔记标题和正文中深度提炼纯净的领域与知识概念术语
+ * 彻底过滤代码块、编程变量、虚词与单双字母杂音
  */
-function extractKeywords(text, topN = 10) {
-  if (!text) return [];
-  const words = text
-    .toLowerCase()
-    .replace(/[^\w\u4e00-\u9fa5]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 2 && !STOP_WORDS.has(w));
+function extractNoteTerms(title = "", content = "") {
+  const terms = new Set();
+  const termWeights = new Map();
 
-  const freq = new Map();
-  for (const w of words) {
-    freq.set(w, (freq.get(w) || 0) + 1);
+  function addTerm(w, weight = 1) {
+    if (!w) return;
+    const norm = String(w).trim().toLowerCase();
+    // 过滤规则：
+    if (norm.length < 2 || norm.length > 15) return;
+    if (STOP_WORDS.has(norm)) return;
+    // 过滤包含数字、下划线、点号等代码变量特征
+    if (/\d/.test(norm) || /[_\-\.]/.test(norm)) return;
+    // 过滤 1~3 位纯英文变量/缩写（如 ls, lv, id, key, fn, req, res）
+    if (/^[a-z]{1,3}$/i.test(norm)) return;
+    // 过滤驼峰命名的局部代码变量 (如 userName, itemIndex)
+    if (/^[a-z]+[A-Z]/.test(w)) return;
+
+    terms.add(norm);
+    termWeights.set(norm, (termWeights.get(norm) || 0) + weight);
   }
 
-  return Array.from(freq.entries())
+  // 1. 深度分析标题（权重最高：weight = 10）
+  if (title) {
+    const cleanTitle = title.replace(/^[\d\.\-_、\s]+/, "").replace(/^第[0-9一二三四五六七八九十]+[章节讲篇][\s:：\-_]*/, "");
+    
+    // 提取中文概念词 (2~6个汉字，如 "创建预留", "采购订单", "微服务架构")
+    const cnChunks = cleanTitle.match(/[\u4e00-\u9fa5]{2,6}/g) || [];
+    cnChunks.forEach((chunk) => {
+      addTerm(chunk, 10);
+      if (chunk.length >= 4) {
+        addTerm(chunk.slice(0, 2), 6);
+        addTerm(chunk.slice(2), 6);
+      }
+    });
+
+    // 提取英文字词/专有名词 (如 REST, OAuth, Docker, Python, Redis)
+    const enTokens = cleanTitle.match(/[a-zA-Z]{3,}/g) || [];
+    enTokens.forEach((tok) => addTerm(tok, 8));
+  }
+
+  // 2. 分析正文（过滤所有代码块、行内代码、图片与链接）
+  if (content) {
+    const cleanBody = content
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`[^`\n]+`/g, " ")
+      .replace(/!\[.*?\]\(.*?\)/g, " ")
+      .replace(/\[.*?\]\(.*?\)/g, " ")
+      .replace(/<[^>]+>/g, " ");
+
+    // 提取大纲小标题（权重次高：weight = 5）
+    const headings = cleanBody.match(/^#{1,4}\s+(.+)$/gm) || [];
+    headings.forEach((h) => {
+      const hText = h.replace(/^#{1,4}\s+/, "").replace(/^[\d\.\-_、\s]+/, "");
+      const cnH = hText.match(/[\u4e00-\u9fa5]{2,6}/g) || [];
+      cnH.forEach((c) => addTerm(c, 5));
+      const enH = hText.match(/[a-zA-Z]{3,}/g) || [];
+      enH.forEach((e) => addTerm(e, 4));
+    });
+
+    // 从普通正文中提取高频中文词 (2~4字)
+    const bodyCn = cleanBody.match(/[\u4e00-\u9fa5]{2,4}/g) || [];
+    const bodyFreq = new Map();
+    bodyCn.forEach((w) => {
+      if (!STOP_WORDS.has(w) && w.length >= 2) {
+        bodyFreq.set(w, (bodyFreq.get(w) || 0) + 1);
+      }
+    });
+
+    Array.from(bodyFreq.entries())
+      .filter(([_, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .forEach(([w, count]) => addTerm(w, Math.min(count, 4)));
+  }
+
+  return Array.from(termWeights.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, topN)
-    .map(([w]) => w);
+    .map(([term]) => term);
+}
+
+// 保持对旧签名的兼容别名
+function extractKeywords(text, topN = 10) {
+  return extractNoteTerms("", text).slice(0, topN);
 }
 
 /**
  * 计算两篇笔记的关联度 (0~100)
  */
 function computeSimilarity(noteA, noteB) {
-  if (!noteA || !noteB || noteA.id === noteB.id) return 0;
+  if (!noteA || !noteB || (noteA.id && noteA.id === noteB.id)) return 0;
   let score = 0;
 
-  // 1. 相同标签加权 (每个同名标签 +20 分)
-  const tagsA = new Set((noteA.tags || []).map((t) => String(t).toLowerCase()));
-  const tagsB = new Set((noteB.tags || []).map((t) => String(t).toLowerCase()));
-  let sharedTags = 0;
-  for (const t of tagsA) {
-    if (tagsB.has(t)) sharedTags++;
-  }
-  score += sharedTags * 22;
-
-  // 2. 标题包含或交叉引用
   const titleA = (noteA.title || "").toLowerCase();
   const titleB = (noteB.title || "").toLowerCase();
-  const contentA = (noteA.contentMarkdown || noteA.plainText || "").toLowerCase();
-  const contentB = (noteB.contentMarkdown || noteB.plainText || "").toLowerCase();
+  const contentA = (noteA.contentMarkdown || noteA.content || noteA.plainText || "").toLowerCase();
+  const contentB = (noteB.contentMarkdown || noteB.content || noteB.plainText || "").toLowerCase();
 
-  if (titleA && contentB.includes(titleA)) score += 30;
-  if (titleB && contentA.includes(titleB)) score += 30;
-
-  // 3. 关键词交集加权
-  const kwA = extractKeywords(titleA + " " + contentA.slice(0, 1500), 8);
-  const kwB = extractKeywords(titleB + " " + contentB.slice(0, 1500), 8);
-  const setB = new Set(kwB);
-  let sharedKw = 0;
-  for (const k of kwA) {
-    if (setB.has(k)) sharedKw++;
+  // 1. 双链引用 / 显式提及检测（支持 @标题 与 [[标题]]）
+  const cleanTitleA = (noteA.title || "").replace(/^[\d\.\-_、\s]+/, "").trim().toLowerCase();
+  const cleanTitleB = (noteB.title || "").replace(/^[\d\.\-_、\s]+/, "").trim().toLowerCase();
+  if (cleanTitleA && cleanTitleA.length >= 2) {
+    if (contentB.includes(`@${cleanTitleA}`) || contentB.includes(`[[${cleanTitleA}`) || contentB.includes(cleanTitleA)) {
+      score += 45;
+    }
   }
-  score += sharedKw * 8;
+  if (cleanTitleB && cleanTitleB.length >= 2) {
+    if (contentA.includes(`@${cleanTitleB}`) || contentA.includes(`[[${cleanTitleB}`) || contentA.includes(cleanTitleB)) {
+      score += 45;
+    }
+  }
+
+  // 2. 标签重合度 (每个重合标签 +25 分)
+  const tagsA = new Set((noteA.tags || []).map((t) => String(t).toLowerCase().trim()));
+  const tagsB = new Set((noteB.tags || []).map((t) => String(t).toLowerCase().trim()));
+  let sharedTags = 0;
+  for (const t of tagsA) {
+    if (t && tagsB.has(t)) sharedTags++;
+  }
+  score += sharedTags * 25;
+
+  // 3. 核心概念与关键词交集
+  const termsA = extractNoteTerms(noteA.title, contentA.slice(0, 2000));
+  const termsB = extractNoteTerms(noteB.title, contentB.slice(0, 2000));
+  const setB = new Set(termsB);
+  let sharedTerms = 0;
+  for (const term of termsA) {
+    if (setB.has(term)) sharedTerms++;
+  }
+  score += sharedTerms * 10;
+
+  // 4. 同目录/笔记本亲和度
+  if (noteA.notebookId && noteB.notebookId && noteA.notebookId === noteB.notebookId) {
+    score += 10;
+  }
 
   return Math.min(100, score);
 }
@@ -428,14 +513,15 @@ function computeSimilarity(noteA, noteB) {
 /**
  * 寻找当前笔记在全库中的 Top 相关笔记
  */
-function findRelatedNotes(currentNote, vaultNotes, limit = 5) {
+function findRelatedNotes(currentNote, vaultNotes, limit = 6) {
   if (!currentNote || !vaultNotes || vaultNotes.length === 0) return [];
   const results = [];
 
   for (const note of vaultNotes) {
     if (note.id === currentNote.id) continue;
     const sim = computeSimilarity(currentNote, note);
-    if (sim >= 15) {
+    // 降低门槛至 12 分，确保有主题语义或标签交集的笔记均能被关联上
+    if (sim >= 12) {
       results.push({
         note,
         similarity: sim,
@@ -443,8 +529,7 @@ function findRelatedNotes(currentNote, vaultNotes, limit = 5) {
     }
   }
 
-  results.sort((a, b) => b.similarity - a.similarity);
-  return results.slice(0, limit);
+  return results.sort((a, b) => b.similarity - a.similarity).slice(0, limit);
 }
 
 // ==================== 5. 局域知识星系 Canvas 图谱绘制 ====================
@@ -547,6 +632,45 @@ function drawNetworkGraph(canvas, currentTitle, relatedItems, onNodeClick) {
       }
     }
   };
+}
+
+/**
+ * 本地高精结构化大纲生成器（在离线或 AI 服务异常时提供高质量结构重组，绝不原样输出）
+ */
+function buildStructuredKnowledgeOutline(title, rawContent, settings = {}) {
+  const headings = (rawContent.match(/^#{1,4}\s+(.+)$/gm) || []).map((h) => h.replace(/^#{1,4}\s+/, "").trim());
+  const terms = extractNoteTerms(title, rawContent).slice(0, 6);
+
+  let result = `# ${title || "知识沉淀与技术总结"}\n\n`;
+  result += `> [!NOTE] 知识架构概览 (TL;DR)\n`;
+  result += `> 本文已由知识库管家梳理核心大纲层级，涵盖 **${title}** 的核心逻辑脉络与工程实施要点。\n`;
+  if (terms.length > 0) {
+    result += `> **核心主题**：${terms.map((t) => `\`${t}\``).join(" / ")}\n`;
+  }
+  result += `\n`;
+
+  result += `## 1. 概述与核心目标\n`;
+  result += `系统梳理 **${title}** 的应用背景、业务场景与技术目标。\n\n`;
+
+  result += `## 2. 核心架构与逻辑主线\n`;
+  if (headings.length > 0) {
+    result += `本文重点涵盖以下核心逻辑单元：\n`;
+    headings.forEach((h, idx) => {
+      result += `${idx + 1}. **${h}**\n`;
+    });
+    result += `\n`;
+  } else {
+    result += `梳理系统关键模块交互、数据流向及核心设计规范。\n\n`;
+  }
+
+  result += `## 3. 详细实施与技术规范\n\n`;
+  result += formatMarkdown(rawContent, settings);
+  result += `\n\n## 4. 注意事项与避坑指南\n`;
+  result += `- [ ] 校验运行环境配置与第三方依赖兼容性\n`;
+  result += `- [ ] 完善异常边界捕获、日志追踪与降级容错机制\n`;
+  result += `- [ ] 涉及核心参数调整时，建议在测试环境充分验证后再行发布\n`;
+
+  return result;
 }
 
 // ==================== 6. 插件主逻辑与 UI 控制台 ====================
@@ -1052,14 +1176,14 @@ export default {
 
                 <div class="ee-copilot-action-card" data-action="troubleshoot">
                   <div class="ee-copilot-card-icon">🛠️</div>
-                  <div class="ee-copilot-card-title">生成排错与避坑对策模板</div>
-                  <div class="ee-copilot-card-desc">智能追加“常见报错代码、排查事务码与降级对策”章节骨架。</div>
+                  <div class="ee-copilot-card-title">生成异常排查与避坑指南</div>
+                  <div class="ee-copilot-card-desc">智能生成“高频疑问、异常根因分析与避坑对策”结构化章节骨架。</div>
                 </div>
 
                 <div class="ee-copilot-action-card" data-action="cheatsheet">
                   <div class="ee-copilot-card-icon">📋</div>
-                  <div class="ee-copilot-card-title">生成术语与参数速查表</div>
-                  <div class="ee-copilot-card-desc">自动将文中零散的参数与关键字转换为结构化对比 Markdown 表格。</div>
+                  <div class="ee-copilot-card-title">生成核心概念与参数速查表</div>
+                  <div class="ee-copilot-card-desc">自动将文中关键概念、参数或配置项提取为结构化 Markdown 对比速查表。</div>
                 </div>
               </div>
 
@@ -1108,8 +1232,9 @@ export default {
                 </div>
 
                 <div class="ee-tag-section">
-                  <div class="ee-tag-section-title">
+                  <div class="ee-tag-section-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>💡 智能推荐标签 (点击直接添加)</span>
+                    <button type="button" class="ee-btn-primary" id="ee-btn-ai-tags" style="height: 24px; padding: 0 10px; font-size: 11px; background: var(--ee-curator-purple);">✨ AI 深度提炼标签</button>
                   </div>
                   <div class="ee-tag-chip-row" id="ee-suggested-tags"></div>
                 </div>
@@ -1249,7 +1374,7 @@ export default {
           if (relatedItems.length === 0) return;
           let linkSection = "\n\n### 🔗 关联知识网络\n";
           relatedItems.forEach((it) => {
-            linkSection += `- [[${it.note.title}]] *(关联度: ${it.similarity}%)*\n`;
+            linkSection += `- @${it.note.title} *(关联度: ${it.similarity}%)*\n`;
           });
           const newContent = (currentNote.contentMarkdown || currentNote.content || "") + linkSection;
           await applyFormattedContent(newContent);
@@ -1305,31 +1430,39 @@ export default {
 
           const rawText = currentNote.contentMarkdown || currentNote.content || "";
 
+          let hasError = false;
+          let errorMsg = "";
+
           try {
             if (act === "ai-rewrite") {
               copilotTitle.textContent = "✨ AI 全文智能重构与深度润色";
-              const sys = "你是一位知识库架构与技术文档撰写专家。请保持笔记核心逻辑、参数与代码不变，对整篇 Markdown 进行结构重构与表达润色，完善小节标题大纲（H1/H2/H3），规范中英文混排，直接输出润色后的 Markdown 正文，不要有任何多余闲聊。";
-              const pmt = `笔记标题：《${currentNote.title}》\n\n笔记原始内容：\n${rawText}`;
+              const sys = "你是一位资深的知识工程架构师与技术文档撰写专家。请对给定的笔记进行全局深层结构重构与表达润色：\n1. 规范大纲层级：重构清晰的层级逻辑（# 概述与技术目标 -> ## 核心架构与原理 -> ## 实施关键步骤与规范 -> ## 注意事项与最佳实践）；\n2. 升华表达：消除口语化、碎片化或凌乱笔记记录，将其升华为结构紧凑、条理分明的高质量知识库文档；\n3. 保留关键细节：严格保留文中所有代码块、专业术语、命令参数、配置键值与重要数据；\n4. 规范排版：中英文与数字间自然留白，排版优雅，行文兼具专业度与可读性；\n5. 直接输出重构润色后的完整 Markdown 正文，严禁输出任何闲聊或开场白。";
+              
+              let promptContent = rawText;
+              if (promptContent.length > 7000) {
+                promptContent = promptContent.slice(0, 7000) + "\n\n(注：原笔记超长，已截取前 7000 字符供结构重组)";
+              }
+              const pmt = `笔记标题：《${currentNote.title}》\n\n笔记原始内容：\n${promptContent}`;
               currentGeneratedText = await callAi(pmt, sys, (msg) => {
                 copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
               });
             } else if (act === "tldr") {
               copilotTitle.textContent = "⚡ AI 提炼 TL;DR 核心要点";
-              const sys = "请为这篇笔记提炼一段高质量的 TL;DR 核心要点备忘卡片（采用 > [!NOTE] 引用块语法），包含【主题对象】、【核心概念与关键函数】、【3 条核心决策/实施要点】。直接输出 Markdown 引用块。";
+              const sys = "请为这篇笔记提炼一段高质量的 TL;DR 核心要点备忘卡片（采用 > [!NOTE] 引用块语法），包含【主题对象】、【核心概念与关键函数/组件】、【3 条核心实施与决策要点】。直接输出 Markdown 引用块，严禁闲聊。";
               const pmt = `笔记标题：《${currentNote.title}》\n\n笔记内容：\n${rawText.slice(0, 3000)}`;
               currentGeneratedText = await callAi(pmt, sys, (msg) => {
                 copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
               });
             } else if (act === "troubleshoot") {
-              copilotTitle.textContent = "🛠️ 智能排错与避坑对策";
-              const sys = "请结合笔记主题，生成一份【常见异常排查与应急预案】Markdown 表格，包含【常见现象/报错】、【根本原因】、【推荐对策与排查路径】，重点聚焦实战避坑经验。直接输出 Markdown 表格。";
+              copilotTitle.textContent = "🛠️ 智能生成排错与避坑对策";
+              const sys = "请结合笔记主题，生成一份【常见异常排查与应急预案】Markdown 表格，包含【常见现象/报错】、【潜在根因】、【推荐对策与排查路径】，重点聚焦实战避坑经验。直接输出 Markdown 表格，严禁闲聊。";
               const pmt = `笔记主题：《${currentNote.title}》\n\n笔记核心内容：\n${rawText.slice(0, 3000)}`;
               currentGeneratedText = await callAi(pmt, sys, (msg) => {
                 copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
               });
             } else if (act === "cheatsheet") {
-              copilotTitle.textContent = "📋 生成参数与状态速查表";
-              const sys = "请从以下笔记中提炼核心参数、关键表字段或配置项，整理为一份结构化 Markdown 对比速查表格（包含【配置项/字段】、【类型/默认值】、【取值说明】、【建议设定】）。直接输出 Markdown 表格。";
+              copilotTitle.textContent = "📋 智能生成核心概念与参数速查表";
+              const sys = "请从以下笔记中提炼核心参数、关键字段、状态码或配置项，整理为一份结构化 Markdown 对比速查表格（包含【配置项/字段】、【类型/范围】、【取值说明】、【建议设定】）。直接输出 Markdown 表格，严禁闲聊。";
               const pmt = `笔记主题：《${currentNote.title}》\n\n笔记核心内容：\n${rawText.slice(0, 3000)}`;
               currentGeneratedText = await callAi(pmt, sys, (msg) => {
                 copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
@@ -1341,24 +1474,31 @@ export default {
               context.ui.showNotice(`AI 服务提示: ${aiErr.message || "未能连接"}，已自动降级为本地高精知识模板`, { type: "info" });
             }
             if (act === "ai-rewrite") {
-              copilotTitle.textContent = "✨ 本地排版净化与大纲重构 (离线)";
-              currentGeneratedText = formatMarkdown(rawText, settings);
+              copilotTitle.textContent = "✨ 本地结构化大纲重组与排版规范 (离线模式)";
+              currentGeneratedText = buildStructuredKnowledgeOutline(currentNote.title, rawText, settings);
             } else if (act === "tldr") {
               copilotTitle.textContent = "⚡ TL;DR 核心要点备忘 (本地规则)";
-              const kws = extractKeywords(currentNote.title + " " + rawText, 5);
-              currentGeneratedText = `> [!NOTE] 核心要点备忘 (TL;DR)\n> - **主题对象**：${currentNote.title}\n> - **关键术语**：${kws.map((k) => `\`${k}\``).join(" / ")}\n> - **核心目标**：提供规范化的技术实施路径与生产环境最佳实践。\n\n`;
+              const kws = extractNoteTerms(currentNote.title, rawText).slice(0, 5);
+              currentGeneratedText = `> [!NOTE] 核心要点备忘 (TL;DR)\n> - **主题对象**：${currentNote.title}\n> - **核心概念**：${kws.map((k) => `\`${k}\``).join(" / ") || "系统规范"}\n> - **实施目标**：规范工程落地路径，保障业务逻辑与生产环境的健壮性。\n\n`;
             } else if (act === "troubleshoot") {
-              copilotTitle.textContent = "🛠️ 异常排错与避坑指南 (离线模板)";
-              currentGeneratedText = `\n\n### 4. 常见异常排查与应急预案\n| 常见现象 / 报错 | 根本原因 | 推荐对策与排查路径 |\n|---|---|---|\n| 权限校验失败 (AUTHORITY_CHECK) | 缺失对应业务对象授权 | 检查 SU53 权限日志，分配对应 PFCG 角色 |\n| 运行时数据类型不匹配 | 隐式转换或入参结构变动 | 使用 SE38 检查最新 DDIC 结构定义 |\n| 高并发性能堵针 | 缺少局部索引或全表扫描 | 优化 WHERE 条件索引覆盖，开启本地缓存机制 |\n`;
+              copilotTitle.textContent = "🛠️ 异常排查与避坑指南 (通用结构模板)";
+              currentGeneratedText = `\n\n### 常见异常排查与应急预案 (Troubleshooting)\n| 常见现象 / 报错 | 潜在根本原因 | 推荐对策与排查路径 |\n|---|---|---|\n| 预期行为不符 / 运行报错 | 配置参数缺失、版本不兼容或边界条件异常 | 复查输入参数与环境变量，查看详细堆栈日志定位根因 |\n| 请求超时 / 执行性能迟缓 | 资源死锁、复杂查询未命中索引或网络波动 | 检查网络与外部依赖连通性，分析耗时调用链路并配置熔断超时 |\n| 权限受限 / 认证凭据失效 | 访问 Token 过期或角色鉴权策略未放行 | 重新生成认证凭据，核对服务访问控制列表 (ACL) 与权限分配 |\n`;
             } else if (act === "cheatsheet") {
-              copilotTitle.textContent = "📋 参数与配置速查表 (离线模板)";
-              currentGeneratedText = `\n\n### 5. 核心参数与状态速查\n| 配置项 / 参数 | 默认取值 | 取值范围 / 含义 | 建议设定 |\n|---|---|---|---|\n| ENABLE_SWITCH | \`ABAP_TRUE\` | 开启 / 关闭管控 | 生产常开 |\n| LOG_LEVEL | \`INFO\` | DEBUG / INFO / ERROR | 故障时切 DEBUG |\n| TIMEOUT_SEC | \`30\` | 毫秒/秒级超时阈值 | 建议 15~30s |\n`;
+              copilotTitle.textContent = "📋 核心概念与参数速查表 (通用结构模板)";
+              currentGeneratedText = `\n\n### 核心概念与关键参数速查 (Cheatsheet)\n| 概念 / 参数项 | 类型 / 范围 | 核心作用与语义 | 推荐设定 / 最佳实践 |\n|---|---|---|---|\n| \`DEBUG_MODE\` | Boolean (\`true\` / \`false\`) | 调试日志输出总控开关 | 生产环境保持 \`false\`，排查故障时按需开启 |\n| \`TIMEOUT_LIMIT\` | Integer (秒/毫秒) | 任务或请求最长等待时限 | 依据业务 SLA 设定合理超时，避免长连接挂起 |\n| \`RETRY_POLICY\` | Integer (0~5) | 异常失败后的重试策略 | 配合指数退避机制，建议最大重试 3 次 |\n`;
             }
+
+            hasError = true;
+            errorMsg = aiErr.message || "未能连接 AI 引擎";
           } finally {
             card.classList.remove("is-loading-ai");
           }
 
-          copilotContent.textContent = currentGeneratedText;
+          if (hasError) {
+            copilotContent.innerHTML = `<div style="padding: 8px 12px; margin-bottom: 12px; border-radius: 6px; background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; font-size: 12px; color: var(--ee-curator-text); line-height: 1.6;">⚠️ <strong>AI 引擎未完成响应</strong>（${escapeHtml(errorMsg)}）。已为您自动生成【本地高精结构化知识架构】（重新梳理逻辑层级、提炼核心概念并执行排版净化）。</div><pre style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.7;">${escapeHtml(currentGeneratedText)}</pre>`;
+          } else {
+            copilotContent.textContent = currentGeneratedText;
+          }
         };
       });
 
@@ -1395,16 +1535,17 @@ export default {
       if (!modalEl || !currentNote) return;
       const suggestedRow = modalEl.querySelector("#ee-suggested-tags");
       const vaultRow = modalEl.querySelector("#ee-vault-tags");
+      const aiTagsBtn = modalEl.querySelector("#ee-btn-ai-tags");
 
-      // 提取核心词作为智能推荐标签
-      const kws = extractKeywords(currentNote.title + " " + (currentNote.contentMarkdown || ""), 6);
       const curTagSet = new Set((currentNote.tags || []).map((t) => String(t).toLowerCase()));
-      const suggestions = kws.filter((k) => !curTagSet.has(k.toLowerCase())).slice(0, 4);
 
-      if (suggestions.length === 0) {
-        suggestedRow.innerHTML = '<span style="font-size: 12.5px; color: var(--ee-curator-text-muted);">暂无新推荐标签</span>';
-      } else {
-        suggestedRow.innerHTML = suggestions
+      function renderSuggestedTags(tags) {
+        const unique = tags.filter((k) => k && !curTagSet.has(k.toLowerCase())).slice(0, 6);
+        if (unique.length === 0) {
+          suggestedRow.innerHTML = '<span style="font-size: 12.5px; color: var(--ee-curator-text-muted);">暂无新推荐标签，可点击上方「✨ AI 深度提炼标签」</span>';
+          return;
+        }
+        suggestedRow.innerHTML = unique
           .map((s) => `<button type="button" class="ee-tag-chip is-suggested" data-add-tag="${escapeHtml(s)}">+ #${escapeHtml(s)}</button>`)
           .join("");
 
@@ -1415,6 +1556,48 @@ export default {
             btn.remove();
           };
         });
+      }
+
+      // 1. 本地高精语义词提取
+      const localTerms = extractNoteTerms(currentNote.title, currentNote.contentMarkdown || currentNote.content || "");
+      renderSuggestedTags(localTerms);
+
+      // 2. 绑定 AI 深度提炼标签
+      if (aiTagsBtn) {
+        aiTagsBtn.onclick = async () => {
+          aiTagsBtn.classList.add("is-loading-ai");
+          aiTagsBtn.disabled = true;
+          suggestedRow.innerHTML = `<span style="font-size: 12px; color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎深度提炼知识主题标签...</span>`;
+
+          try {
+            const sys = "你是一位知识库知识图谱与分类治理专家。请通读这篇笔记，提炼出 3~5 个具有高分类价值的技术领域、业务模块或核心知识标签（例如：#系统架构、#性能优化、#API设计、#权限控制）。要求：1. 严禁提取任何局部变量名、函数形参、单字母或无通用分类意义的代码缩写；2. 必须是宏观领域词或通用规范技术栈名称；3. 直接输出以逗号或空格分隔的标签名称列表（如：系统架构, 性能优化, 接口规范），严禁输出任何闲聊或开场白。";
+            const rawBody = (currentNote.contentMarkdown || currentNote.content || "").slice(0, 3500);
+            const pmt = `笔记标题：《${currentNote.title}》\n\n笔记核心内容：\n${rawBody}`;
+            const aiRes = await callAi(pmt, sys);
+            const extracted = aiRes
+              .split(/[,，\s\n#、;；]+/)
+              .map((s) => s.trim().replace(/^#/, ""))
+              .filter((s) => s.length >= 2 && s.length <= 15 && !STOP_WORDS.has(s.toLowerCase()));
+
+            if (extracted.length > 0) {
+              renderSuggestedTags(extracted);
+              if (context.ui?.showNotice) {
+                context.ui.showNotice(`AI 已成功提炼 ${extracted.length} 个知识标签`, { type: "success" });
+              }
+            } else {
+              renderSuggestedTags(localTerms);
+            }
+          } catch (e) {
+            console.warn("[Note Curator] AI 提炼标签失败:", e);
+            if (context.ui?.showNotice) {
+              context.ui.showNotice(`AI 提炼未完成: ${e.message || "未能连接"}，已保留本地语义词`, { type: "info" });
+            }
+            renderSuggestedTags(localTerms);
+          } finally {
+            aiTagsBtn.classList.remove("is-loading-ai");
+            aiTagsBtn.disabled = false;
+          }
+        };
       }
 
       // 统计全库高频标签
