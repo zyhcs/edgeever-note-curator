@@ -1022,7 +1022,7 @@ export default {
                     <span>原始排版 (当前笔记)</span>
                     <span style="color: var(--ee-curator-danger); font-size: 11px;">未净化</span>
                   </div>
-                  <pre class="ee-diff-body">${escapeHtml(rawContent)}</pre>
+                  <div class="ee-diff-body" id="ee-diff-original" data-code-pro-processed="true" data-no-code-pro="true">${escapeHtml(rawContent)}</div>
                 </div>
 
                 <div class="ee-diff-pane">
@@ -1030,7 +1030,7 @@ export default {
                     <span>净化后效果 (预览)</span>
                     <span style="color: var(--ee-curator-success); font-size: 11px;">已规范化</span>
                   </div>
-                  <pre class="ee-diff-body" style="background: rgba(45, 164, 78, 0.03);">${escapeHtml(formattedCache)}</pre>
+                  <div class="ee-diff-body" id="ee-diff-formatted" data-code-pro-processed="true" data-no-code-pro="true" style="background: rgba(45, 164, 78, 0.03);">${escapeHtml(formattedCache)}</div>
                 </div>
               </div>
             </div>
@@ -1182,6 +1182,36 @@ export default {
             setTimeout(() => { copyBtn.textContent = "复制净化结果"; }, 1500);
           });
         };
+      }
+
+      // 双栏平滑联动同步滚动
+      const leftDiff = modalEl.querySelector("#ee-diff-original");
+      const rightDiff = modalEl.querySelector("#ee-diff-formatted");
+      if (leftDiff && rightDiff) {
+        let isSyncing = false;
+        leftDiff.addEventListener("scroll", () => {
+          if (isSyncing) return;
+          isSyncing = true;
+          const maxLeft = leftDiff.scrollHeight - leftDiff.clientHeight;
+          if (maxLeft > 0) {
+            const ratio = leftDiff.scrollTop / maxLeft;
+            const maxRight = rightDiff.scrollHeight - rightDiff.clientHeight;
+            rightDiff.scrollTop = ratio * maxRight;
+          }
+          requestAnimationFrame(() => { isSyncing = false; });
+        }, { passive: true });
+
+        rightDiff.addEventListener("scroll", () => {
+          if (isSyncing) return;
+          isSyncing = true;
+          const maxRight = rightDiff.scrollHeight - rightDiff.clientHeight;
+          if (maxRight > 0) {
+            const ratio = rightDiff.scrollTop / maxRight;
+            const maxLeft = leftDiff.scrollHeight - leftDiff.clientHeight;
+            leftDiff.scrollTop = ratio * maxLeft;
+          }
+          requestAnimationFrame(() => { isSyncing = false; });
+        }, { passive: true });
       }
 
       // 绑定知识网络列表
