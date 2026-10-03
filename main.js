@@ -1400,7 +1400,7 @@ export default {
         aiAuditBtn.onclick = async () => {
           aiAuditBtn.classList.add("is-loading-ai");
           aiAuditBtn.disabled = true;
-          aiAuditContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（模型: ${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置模型" : (settings.aiModel || "本地代理")}）进行全景审查评估...</span>`;
+          aiAuditContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（模型: ${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置 AI / 本机 ACP Agent" : (settings.aiModel || "本地代理")}）进行全景审查评估...</span>`;
 
           const rawText = currentNote.contentMarkdown || currentNote.content || "";
           try {
@@ -1438,7 +1438,7 @@ export default {
 
           card.classList.add("is-loading-ai");
           copilotBox.style.display = "flex";
-          copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置模型" : (settings.aiModel || "本地/自定义代理")}）生成中，请稍候...</span>`;
+          copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置 AI / 本机 ACP Agent" : (settings.aiModel || "本地/自定义代理")}）生成中，请稍候...</span>`;
 
           const rawText = currentNote.contentMarkdown || currentNote.content || "";
 

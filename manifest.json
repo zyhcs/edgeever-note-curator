@@ -2,7 +2,7 @@
   "type": "plugin",
   "id": "org.edgeever.plugins.note-curator",
   "name": "Note Curator",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "apiVersion": "2",
   "settingsUi": "host",
   "description": "All-in-one AI & Local PKM Assistant for EdgeEver: Health check & review, one-click layout & markdown formatting, content expansion, tag governance, and knowledge network linking.",
@@ -37,10 +37,10 @@
         "key": "ai_provider",
         "type": "select",
         "label": "AI 模型来源",
-        "description": "首选 EdgeEver 客户端原生已配置的 AI（直接联动客户端设置，开箱即用无需填 Key），或切换为自定义 API / 本地代理",
+        "description": "首选 EdgeEver 客户端原生已配置的 AI（包含云端模型或本机 ACP Agent 如 Antigravity/Claude Code，开箱即用无需填 Key），或切换为自定义 API / 本地代理",
         "default": "edgeever",
         "options": [
-          { "value": "edgeever", "label": "🤖 EdgeEver 客户端原生已配置的 AI (推荐，开箱即用)" },
+          { "value": "edgeever", "label": "🤖 EdgeEver 客户端配置的 AI / 本机 ACP Agent (推荐，开箱即用)" },
           { "value": "custom", "label": "🌐 自定义 OpenAI 兼容代理 / 本地 Ollama" }
         ]
       },
