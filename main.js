@@ -469,7 +469,16 @@ function computeSimilarity(noteA, noteB) {
   const contentA = (noteA.contentMarkdown || noteA.content || noteA.plainText || "").toLowerCase();
   const contentB = (noteB.contentMarkdown || noteB.content || noteB.plainText || "").toLowerCase();
 
-  // 1. 双链引用 / 显式提及检测（支持 @标题 与 [[标题]]）
+  // 1. EdgeEver 原生文档引用 (#memo=memo_id) 与显式提及检测
+  const idA = (noteA.id || noteA.noteId || "").replace(/^memo_/, "");
+  const idB = (noteB.id || noteB.noteId || "").replace(/^memo_/, "");
+  if (idA && (contentB.includes(idA) || contentB.includes(`memo_${idA}`))) {
+    score += 50; // 强引用！直接包含 EdgeEver memo ID
+  }
+  if (idB && (contentA.includes(idB) || contentA.includes(`memo_${idB}`))) {
+    score += 50; // 强引用！直接包含 EdgeEver memo ID
+  }
+
   const cleanTitleA = (noteA.title || "").replace(/^[\d\.\-_、\s]+/, "").trim().toLowerCase();
   const cleanTitleB = (noteB.title || "").replace(/^[\d\.\-_、\s]+/, "").trim().toLowerCase();
   if (cleanTitleA && cleanTitleA.length >= 2) {
@@ -1374,7 +1383,10 @@ export default {
           if (relatedItems.length === 0) return;
           let linkSection = "\n\n### 🔗 关联知识网络\n";
           relatedItems.forEach((it) => {
-            linkSection += `- @${it.note.title} *(关联度: ${it.similarity}%)*\n`;
+            const memoId = it.note.id || it.note.noteId || "";
+            const memoRef = memoId.startsWith("memo_") ? memoId : `memo_${memoId}`;
+            const safeTitle = (it.note.title || "未命名笔记").replace(/\[/g, "\\[").replace(/\]/g, "\\]");
+            linkSection += `- [${safeTitle}](#memo=${memoRef}) *(关联度: ${it.similarity}%)*\n`;
           });
           const newContent = (currentNote.contentMarkdown || currentNote.content || "") + linkSection;
           await applyFormattedContent(newContent);
