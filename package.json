@@ -1,0 +1,25 @@
+{
+  "name": "edgeever-note-curator",
+  "version": "1.0.0",
+  "description": "All-in-one AI & Local PKM Assistant for EdgeEver: Health check & review, one-click layout & markdown formatting, content expansion, tag governance, and knowledge network linking.",
+  "main": "main.js",
+  "scripts": {
+    "test": "node -c main.js"
+  },
+  "keywords": [
+    "edgeever",
+    "edgeever-plugin",
+    "pkm",
+    "knowledge-base",
+    "note-organizer",
+    "formatter",
+    "health-check",
+    "knowledge-graph"
+  ],
+  "author": "zyhcs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zyhcs/edgeever-note-curator.git"
+  }
+}

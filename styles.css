@@ -1,0 +1,811 @@
+/**
+ * EdgeEver Note Curator Plugin Styles
+ * 全库笔记管家与体检大师 (GitHub Primer 极客精工质感，深浅色自适应)
+ */
+
+/* ==================== 1. CSS 变量与主题定义 ==================== */
+:root {
+  --ee-curator-primary: #0969da;
+  --ee-curator-primary-hover: #0860ca;
+  --ee-curator-primary-light: rgba(9, 105, 218, 0.12);
+  --ee-curator-success: #2da44e;
+  --ee-curator-success-bg: rgba(45, 164, 78, 0.12);
+  --ee-curator-warning: #bf8700;
+  --ee-curator-warning-bg: rgba(191, 135, 0, 0.12);
+  --ee-curator-danger: #cf222e;
+  --ee-curator-danger-bg: rgba(207, 34, 46, 0.12);
+  --ee-curator-purple: #8250df;
+  --ee-curator-purple-bg: rgba(130, 80, 223, 0.12);
+
+  --ee-curator-bg: #ffffff;
+  --ee-curator-surface: #f6f8fa;
+  --ee-curator-border: #d0d7de;
+  --ee-curator-text: #1f2328;
+  --ee-curator-text-muted: #656d76;
+
+  --ee-curator-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --ee-curator-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.dark,
+[data-theme="dark"] {
+  --ee-curator-primary: #2f81f7;
+  --ee-curator-primary-hover: #388bfd;
+  --ee-curator-primary-light: rgba(56, 139, 253, 0.15);
+  --ee-curator-success: #3fb950;
+  --ee-curator-success-bg: rgba(63, 185, 80, 0.15);
+  --ee-curator-warning: #d29922;
+  --ee-curator-warning-bg: rgba(210, 153, 34, 0.15);
+  --ee-curator-danger: #f85149;
+  --ee-curator-danger-bg: rgba(248, 81, 73, 0.15);
+  --ee-curator-purple: #a371f7;
+  --ee-curator-purple-bg: rgba(163, 113, 247, 0.15);
+
+  --ee-curator-bg: #0d1117;
+  --ee-curator-surface: #161b22;
+  --ee-curator-border: #30363d;
+  --ee-curator-text: #e6edf3;
+  --ee-curator-text-muted: #8b949e;
+
+  --ee-curator-shadow: 0 24px 64px rgba(0, 0, 0, 0.7);
+  --ee-curator-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== 2. Dock 工具坞按钮 ==================== */
+.edgeever-note-curator-dock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  color: var(--ee-curator-text);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: var(--ee-curator-shadow-sm);
+  position: relative;
+  user-select: none;
+}
+
+.edgeever-note-curator-dock-btn:hover {
+  background: var(--ee-curator-primary-light);
+  border-color: var(--ee-curator-primary);
+  color: var(--ee-curator-primary);
+  transform: translateY(-1px);
+}
+
+.edgeever-note-curator-dock-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* ==================== 3. 模态弹窗与遮罩 ==================== */
+.ee-curator-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  opacity: 0;
+  transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ee-curator-backdrop.is-visible {
+  opacity: 1;
+}
+
+.ee-curator-modal {
+  width: 1040px;
+  max-width: 95vw;
+  height: 760px;
+  max-height: 90vh;
+  background: var(--ee-curator-bg);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 14px;
+  box-shadow: var(--ee-curator-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  color: var(--ee-curator-text);
+  transform: scale(0.96) translateY(8px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ee-curator-backdrop.is-visible .ee-curator-modal {
+  transform: scale(1) translateY(0);
+}
+
+/* ==================== 4. 模态头部 ==================== */
+.ee-curator-header {
+  padding: 16px 24px;
+  background: var(--ee-curator-surface);
+  border-bottom: 1px solid var(--ee-curator-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.ee-curator-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.ee-curator-brand-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #0969da 0%, #2ea44f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(9, 105, 218, 0.3);
+}
+
+.ee-curator-brand-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.ee-curator-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.ee-curator-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ee-curator-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ee-curator-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 480px;
+}
+
+.ee-curator-badge-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: var(--ee-curator-primary-light);
+  color: var(--ee-curator-primary);
+  border: 1px solid rgba(9, 105, 218, 0.2);
+}
+
+.ee-curator-header-sub {
+  font-size: 12px;
+  color: var(--ee-curator-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ee-curator-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.ee-curator-quick-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--ee-curator-bg);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ee-curator-score-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.score-rank-s { background: #2da44e; }
+.score-rank-a { background: #0969da; }
+.score-rank-b { background: #bf8700; }
+.score-rank-c { background: #cf222e; }
+
+.ee-curator-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--ee-curator-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.ee-curator-close-btn:hover {
+  background: rgba(128, 128, 128, 0.15);
+  color: var(--ee-curator-text);
+}
+
+/* ==================== 5. 导航选项卡栏 (Nav Tabs) ==================== */
+.ee-curator-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 24px;
+  background: var(--ee-curator-surface);
+  border-bottom: 1px solid var(--ee-curator-border);
+  flex-shrink: 0;
+}
+
+.ee-curator-tab {
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--ee-curator-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s ease;
+}
+
+.ee-curator-tab:hover {
+  color: var(--ee-curator-text);
+}
+
+.ee-curator-tab.is-active {
+  color: var(--ee-curator-primary);
+  border-bottom-color: var(--ee-curator-primary);
+}
+
+/* ==================== 6. 主内容工作区 ==================== */
+.ee-curator-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.ee-curator-panel {
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+  animation: eeFadeIn 0.18s ease;
+}
+
+.ee-curator-panel.is-active {
+  display: flex;
+}
+
+@keyframes eeFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== 7. TAB 1: 笔记体检与诊断 ==================== */
+.ee-audit-summary-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+}
+
+.ee-audit-score-card {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.ee-audit-big-ring {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: #fff;
+}
+
+.ee-audit-score-num {
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ee-audit-score-grade {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.ee-audit-card-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ee-audit-card-desc {
+  font-size: 12px;
+  color: var(--ee-curator-text-muted);
+  line-height: 1.5;
+}
+
+.ee-audit-bars-card {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 14px;
+}
+
+.ee-dimension-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ee-dimension-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.ee-dimension-name {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ee-dimension-val {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--ee-curator-text-muted);
+}
+
+.ee-dimension-track {
+  height: 8px;
+  background: rgba(128, 128, 128, 0.15);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ee-dimension-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 优缺点分析与改进建议 */
+.ee-audit-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.ee-audit-box {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ee-audit-box-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.ee-audit-box.is-pros { border-left: 4px solid var(--ee-curator-success); }
+.ee-audit-box.is-cons { border-left: 4px solid var(--ee-curator-warning); }
+.ee-audit-box.is-prescription { border-left: 4px solid var(--ee-curator-primary); }
+
+.ee-audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ee-audit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.ee-audit-bullet {
+  flex-shrink: 0;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.is-pros .ee-audit-bullet { color: var(--ee-curator-success); }
+.is-cons .ee-audit-bullet { color: var(--ee-curator-warning); }
+.is-prescription .ee-audit-bullet { color: var(--ee-curator-primary); }
+
+/* ==================== 8. TAB 2: 排版净化器与 Diff 对比 ==================== */
+.ee-format-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 8px;
+}
+
+.ee-format-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12.5px;
+  color: var(--ee-curator-text-muted);
+}
+
+.ee-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--ee-curator-text);
+}
+
+.ee-diff-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  height: 480px;
+}
+
+.ee-diff-pane {
+  display: flex;
+  flex-direction: column;
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ee-diff-header {
+  padding: 10px 16px;
+  background: rgba(128, 128, 128, 0.08);
+  border-bottom: 1px solid var(--ee-curator-border);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ee-diff-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--ee-curator-text);
+  background: var(--ee-curator-bg);
+}
+
+.ee-btn-primary {
+  height: 32px;
+  padding: 0 16px;
+  border: none;
+  background: linear-gradient(135deg, #2ea44f 0%, #238636 100%);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(35, 134, 54, 0.25);
+  transition: all 0.18s ease;
+}
+
+.ee-btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.ee-btn-secondary {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ee-curator-border);
+  background: var(--ee-curator-surface);
+  color: var(--ee-curator-text);
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.ee-btn-secondary:hover {
+  background: rgba(128, 128, 128, 0.12);
+  border-color: var(--ee-curator-text-muted);
+}
+
+/* ==================== 9. TAB 3: 内容重构与扩写 ==================== */
+.ee-copilot-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ee-copilot-action-card {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.ee-copilot-action-card:hover {
+  border-color: var(--ee-curator-primary);
+  background: var(--ee-curator-primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(9, 105, 218, 0.15);
+}
+
+.ee-copilot-card-icon {
+  font-size: 24px;
+}
+
+.ee-copilot-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ee-curator-text);
+}
+
+.ee-copilot-card-desc {
+  font-size: 12px;
+  color: var(--ee-curator-text-muted);
+  line-height: 1.5;
+}
+
+.ee-copilot-result-box {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ee-copilot-result-text {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ee-curator-text);
+  white-space: pre-wrap;
+  background: var(--ee-curator-bg);
+  padding: 14px;
+  border-radius: 6px;
+  border: 1px solid var(--ee-curator-border);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* ==================== 10. TAB 4: 知识网络与局域图谱 ==================== */
+.ee-network-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.ee-network-list-box {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ee-network-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--ee-curator-bg);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ee-network-item:hover {
+  border-color: var(--ee-curator-primary);
+  background: var(--ee-curator-primary-light);
+}
+
+.ee-network-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ee-network-item-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ee-curator-purple);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.ee-network-graph-container {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 10px;
+  height: 480px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ee-network-graph-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* ==================== 11. TAB 5: 标签智能治理 ==================== */
+.ee-tag-governance-box {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ee-tag-section {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ee-tag-section-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ee-tag-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ee-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--ee-curator-purple-bg);
+  color: var(--ee-curator-purple);
+  border: 1px solid rgba(130, 80, 223, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ee-tag-chip:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.ee-tag-chip.is-suggested {
+  background: var(--ee-curator-success-bg);
+  color: var(--ee-curator-success);
+  border-color: rgba(45, 164, 78, 0.25);
+}
+
+/* ==================== 12. 底部状态与操作栏 ==================== */
+.ee-curator-footer {
+  padding: 12px 24px;
+  background: var(--ee-curator-surface);
+  border-top: 1px solid var(--ee-curator-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ee-curator-text-muted);
+}
+
+.ee-curator-status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ee-curator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ee-curator-success);
+}
