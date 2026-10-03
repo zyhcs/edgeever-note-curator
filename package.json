@@ -1,6 +1,6 @@
 {
   "name": "edgeever-note-curator",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "All-in-one AI & Local PKM Assistant for EdgeEver: Health check & review, one-click layout & markdown formatting, content expansion, tag governance, and knowledge network linking.",
   "main": "main.js",
   "scripts": {
