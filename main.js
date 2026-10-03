@@ -753,16 +753,40 @@ export default {
         }
 
         statusCallback("正在调用 EdgeEver 客户端已配置的 AI 模型进行深度分析...");
-        const res = await context.ai.generate({
-          system: systemPrompt,
-          prompt: prompt,
-          maxOutputTokens: 6000,
-        });
+        try {
+          const res = await context.ai.generate({
+            system: systemPrompt,
+            prompt: prompt,
+            maxOutputTokens: 3500,
+          });
 
-        if (!res || !res.text) {
-          throw new Error("EdgeEver 客户端 AI 返回内容为空，请稍后重试。");
+          if (!res || !res.text) {
+            throw new Error("EdgeEver 客户端 AI 返回内容为空，请稍后重试。");
+          }
+          return res.text;
+        } catch (firstErr) {
+          const errMsg = String(firstErr.message || "");
+          const isDemandError = errMsg.includes("high demand") || errMsg.includes("overloaded") || errMsg.includes("429") || errMsg.includes("503");
+
+          if (isDemandError) {
+            statusCallback("检测到模型服务高峰（High Demand 队列拥堵），正在自适应退避 2 秒后自动重试...");
+            await new Promise((r) => setTimeout(r, 2000));
+            try {
+              const trimmedPrompt = prompt.length > 4500 ? prompt.slice(0, 4500) + "\n\n(注：已自适应精简以优先通过高峰队列)" : prompt;
+              const retryRes = await context.ai.generate({
+                system: systemPrompt,
+                prompt: trimmedPrompt,
+                maxOutputTokens: 2500,
+              });
+              if (retryRes && retryRes.text) {
+                return retryRes.text;
+              }
+            } catch (retryErr) {
+              console.warn("[Note Curator] 二次重试仍然拥堵:", retryErr);
+            }
+          }
+          throw firstErr;
         }
-        return res.text;
       }
 
       // 2. 自定义 OpenAI 兼容代理 / 本地代理 (Ollama / DeepSeek / LM Studio 等)
@@ -1411,7 +1435,14 @@ export default {
             });
             aiAuditContent.innerHTML = `<div style="white-space: pre-wrap; font-family: inherit; line-height: 1.7;">${escapeHtml(result)}</div>`;
           } catch (e) {
-            aiAuditContent.innerHTML = `<span style="color: var(--ee-curator-warning);">⚠️ AI 体检未能完成: ${escapeHtml(e.message || "连接失败")}。已保留本地五维雷达诊断，您可在设置中检查客户端 AI 或配置本地 Ollama。</span>`;
+            aiAuditContent.innerHTML = `<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span style="color: var(--ee-curator-warning); font-size: 12px;">⚠️ AI 体检未能完成: ${escapeHtml(e.message || "连接失败")}。已保留本地五维雷达诊断。</span>
+              <button type="button" class="ee-btn-primary" id="ee-retry-ai-audit" style="height: 24px; padding: 0 8px; font-size: 11px; background: var(--ee-curator-purple);">🔄 重新评估</button>
+            </div>`;
+            const retry = aiAuditContent.querySelector("#ee-retry-ai-audit");
+            if (retry) {
+              retry.onclick = () => aiAuditBtn.click();
+            }
           } finally {
             aiAuditBtn.classList.remove("is-loading-ai");
             aiAuditBtn.disabled = false;
@@ -1451,8 +1482,8 @@ export default {
               const sys = "你是一位资深的知识工程架构师与技术文档撰写专家。请对给定的笔记进行全局深层结构重构与表达润色：\n1. 规范大纲层级：重构清晰的层级逻辑（# 概述与技术目标 -> ## 核心架构与原理 -> ## 实施关键步骤与规范 -> ## 注意事项与最佳实践）；\n2. 升华表达：消除口语化、碎片化或凌乱笔记记录，将其升华为结构紧凑、条理分明的高质量知识库文档；\n3. 保留关键细节：严格保留文中所有代码块、专业术语、命令参数、配置键值与重要数据；\n4. 规范排版：中英文与数字间自然留白，排版优雅，行文兼具专业度与可读性；\n5. 直接输出重构润色后的完整 Markdown 正文，严禁输出任何闲聊或开场白。";
               
               let promptContent = rawText;
-              if (promptContent.length > 7000) {
-                promptContent = promptContent.slice(0, 7000) + "\n\n(注：原笔记超长，已截取前 7000 字符供结构重组)";
+              if (promptContent.length > 5500) {
+                promptContent = promptContent.slice(0, 5500) + "\n\n(注：原笔记超长，已自适应截取前 5500 字符进行结构重组，优先保证大纲与核心逻辑完整输出)";
               }
               const pmt = `笔记标题：《${currentNote.title}》\n\n笔记原始内容：\n${promptContent}`;
               currentGeneratedText = await callAi(pmt, sys, (msg) => {
@@ -1507,7 +1538,16 @@ export default {
           }
 
           if (hasError) {
-            copilotContent.innerHTML = `<div style="padding: 8px 12px; margin-bottom: 12px; border-radius: 6px; background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; font-size: 12px; color: var(--ee-curator-text); line-height: 1.6;">⚠️ <strong>AI 引擎未完成响应</strong>（${escapeHtml(errorMsg)}）。已为您自动生成【本地高精结构化知识架构】（重新梳理逻辑层级、提炼核心概念并执行排版净化）。</div><pre style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.7;">${escapeHtml(currentGeneratedText)}</pre>`;
+            copilotContent.innerHTML = `<div style="padding: 10px 14px; margin-bottom: 12px; border-radius: 6px; background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; font-size: 12px; color: var(--ee-curator-text); line-height: 1.6;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span style="flex: 1; min-width: 240px;">⚠️ <strong>AI 引擎未完成响应</strong>（${escapeHtml(errorMsg)}）。已为您自动生成【本地高精结构化知识架构】。</span>
+                <button type="button" class="ee-btn-primary" id="ee-retry-current-card" style="height: 26px; padding: 0 10px; font-size: 11.5px; background: var(--ee-curator-purple); white-space: nowrap;">🔄 点击重试</button>
+              </div>
+            </div><pre style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.7;">${escapeHtml(currentGeneratedText)}</pre>`;
+            const retryBtn = copilotContent.querySelector("#ee-retry-current-card");
+            if (retryBtn) {
+              retryBtn.onclick = () => card.click();
+            }
           } else {
             copilotContent.textContent = currentGeneratedText;
           }
