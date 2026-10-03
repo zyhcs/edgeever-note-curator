@@ -2,7 +2,7 @@
   "type": "plugin",
   "id": "org.edgeever.plugins.note-curator",
   "name": "Note Curator",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "apiVersion": "2",
   "settingsUi": "host",
   "description": "All-in-one AI & Local PKM Assistant for EdgeEver: Health check & review, one-click layout & markdown formatting, content expansion, tag governance, and knowledge network linking.",
@@ -16,6 +16,7 @@
   "entry": "./main.js",
   "platforms": ["web", "desktop"],
   "permissions": [
+    "ai:generate",
     "notes:read",
     "notes:write",
     "metadata:read",
@@ -33,30 +34,34 @@
   "settings": {
     "fields": [
       {
-        "key": "ai_enabled",
-        "type": "boolean",
-        "label": "启用 AI 增强模型",
-        "description": "开启后支持 AI 深度扩写、段落润色与智能点评。关闭时本地规则引擎（排版净化、全库体检、知识网关联）依然 100% 独立可用。",
-        "default": false
+        "key": "ai_provider",
+        "type": "select",
+        "label": "AI 模型来源",
+        "description": "首选 EdgeEver 客户端原生已配置的 AI（直接联动客户端设置，开箱即用无需填 Key），或切换为自定义 API / 本地代理",
+        "default": "edgeever",
+        "options": [
+          { "value": "edgeever", "label": "🤖 EdgeEver 客户端原生已配置的 AI (推荐，开箱即用)" },
+          { "value": "custom", "label": "🌐 自定义 OpenAI 兼容代理 / 本地 Ollama" }
+        ]
       },
       {
         "key": "ai_base_url",
         "type": "text",
-        "label": "AI API Base URL",
-        "description": "大模型 API 地址，如 https://api.deepseek.com/v1 或 https://api.openai.com/v1 或本地 Ollama",
-        "default": "https://api.deepseek.com/v1"
+        "label": "自定义/本地代理 API Base URL",
+        "description": "例如本地 Ollama: http://127.0.0.1:11434/v1 或 LM Studio: http://127.0.0.1:1234/v1 或 DeepSeek: https://api.deepseek.com/v1",
+        "default": "http://127.0.0.1:11434/v1"
       },
       {
         "key": "ai_api_key",
         "type": "secret",
-        "label": "AI API Key",
-        "description": "您的 API 密钥（保存在本地设备，绝不上报）"
+        "label": "自定义 API Key (本地代理无需填写)",
+        "description": "本地代理 (如 Ollama / LM Studio) 无需填写；云端 API 请填写有效 Key"
       },
       {
         "key": "ai_model",
         "type": "text",
-        "label": "AI 模型名称",
-        "description": "例如 deepseek-chat, gpt-4o-mini, qwen-plus 等",
+        "label": "自定义 AI 模型名称",
+        "description": "例如 deepseek-chat, qwen2.5:7b, gpt-4o-mini 等",
         "default": "deepseek-chat"
       },
       {

@@ -558,6 +558,122 @@ export default {
     let vaultNotes = [];
     let formattedCache = "";
 
+    let settings = {
+      aiProvider: "edgeever",
+      aiBaseUrl: "http://127.0.0.1:11434/v1",
+      aiApiKey: "",
+      aiModel: "deepseek-chat",
+      autoPanguSpacing: true,
+      autoFixHeadings: true,
+      autoCodeDetect: true,
+    };
+
+    async function loadSettings() {
+      try {
+        const prov = await context.settings?.get?.("ai_provider");
+        if (prov) settings.aiProvider = String(prov);
+        const url = await context.settings?.get?.("ai_base_url");
+        if (url) settings.aiBaseUrl = String(url);
+        const key = await context.settings?.get?.("ai_api_key");
+        if (key) settings.aiApiKey = String(key);
+        const model = await context.settings?.get?.("ai_model");
+        if (model) settings.aiModel = String(model);
+
+        const pangu = await context.settings?.get?.("auto_pangu_spacing");
+        if (pangu !== undefined && pangu !== null) settings.autoPanguSpacing = Boolean(pangu);
+        const headings = await context.settings?.get?.("auto_fix_headings");
+        if (headings !== undefined && headings !== null) settings.autoFixHeadings = Boolean(headings);
+        const code = await context.settings?.get?.("auto_code_detect");
+        if (code !== undefined && code !== null) settings.autoCodeDetect = Boolean(code);
+      } catch (e) {
+        console.warn("[Note Curator] loadSettings error:", e);
+      }
+    }
+
+    loadSettings();
+
+    const onSettingsChanged = context.events?.on?.("settings.changed", async () => {
+      await loadSettings();
+    });
+
+    /**
+     * 智能调用 AI 引擎（支持 EdgeEver 客户端原生已配置的 AI，以及自定义/本地代理）
+     */
+    async function callAi(prompt, systemPrompt, statusCallback = () => {}) {
+      const provider = settings.aiProvider || "edgeever";
+
+      // 1. 首选 EdgeEver 客户端原生已配置的 AI 模型
+      if (provider === "edgeever") {
+        if (!context.ai || typeof context.ai.generate !== "function") {
+          throw new Error("当前 EdgeEver 版本未提供 context.ai 模块，请检查客户端版本或在设置中切换为「自定义/本地代理」模式。");
+        }
+
+        try {
+          if (context.ai.status) {
+            const status = await context.ai.status();
+            if (status && status.configured === false) {
+              throw new Error("EdgeEver 客户端尚未配置默认 AI 模型！请在 EdgeEver 工作区左下角「设置 -> AI」中配置大模型，或在插件设置中切换为「自定义/本地代理」。");
+            }
+          }
+        } catch (e) {
+          if (e.message && e.message.includes("尚未配置")) throw e;
+        }
+
+        statusCallback("正在调用 EdgeEver 客户端已配置的 AI 模型进行深度分析...");
+        const res = await context.ai.generate({
+          system: systemPrompt,
+          prompt: prompt,
+          maxOutputTokens: 6000,
+        });
+
+        if (!res || !res.text) {
+          throw new Error("EdgeEver 客户端 AI 返回内容为空，请稍后重试。");
+        }
+        return res.text;
+      }
+
+      // 2. 自定义 OpenAI 兼容代理 / 本地代理 (Ollama / DeepSeek / LM Studio 等)
+      statusCallback("正在连接自定义/本地 AI 代理...");
+      const baseUrl = (settings.aiBaseUrl || "http://127.0.0.1:11434/v1").replace(/\/+$/, "");
+      const apiKey = (settings.aiApiKey || "").trim();
+      const model = (settings.aiModel || "deepseek-chat").trim();
+
+      const isLocal = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
+      if (!apiKey && !isLocal) {
+        throw new Error("使用自定义云端 AI 时请在设置中配置有效 API Key（本地 Ollama / LM Studio 无需配置）。");
+      }
+
+      const endpoint = `${baseUrl}/chat/completions`;
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.6,
+          max_tokens: 4000,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`AI 代理返回异常 (${response.status}): ${errText.slice(0, 150)}`);
+      }
+
+      const result = await response.json();
+      const text = result?.choices?.[0]?.message?.content || "";
+      if (!text) {
+        throw new Error("AI 代理未返回任何有效文本内容。");
+      }
+      return text;
+    }
+
     // 1. 统一插件工具坞 (Plugin Dock) 与悬浮入口按钮
     function getOrCreatePluginDock() {
       let dock = document.getElementById("edgeever-plugins-dock");
@@ -651,24 +767,77 @@ export default {
     setTimeout(ensureButtonMounted, 300);
 
     /**
-     * 获取当前活动的活跃笔记
+     * 获取当前活动的活跃笔记 (全面覆盖 EdgeEver 官方规范与各种宿主版本)
      */
     async function resolveActiveNote() {
       try {
-        if (context.editor?.getActiveNoteId) {
-          const id = await context.editor.getActiveNoteId();
-          if (id) {
-            const note = await context.notes.get(id);
-            if (note) return note;
+        // 1. 优先调用 context.editor.getDocument() (EdgeEver 官方标准编辑器文档 API)
+        if (context.editor?.getDocument) {
+          try {
+            const doc = await context.editor.getDocument();
+            if (doc) {
+              const noteId = doc.noteId || doc.id;
+              let note = null;
+              if (noteId && context.notes?.get) {
+                try {
+                  note = await context.notes.get(noteId);
+                } catch (e) {}
+              }
+              const content = doc.contentMarkdown ?? note?.contentMarkdown ?? doc.content ?? note?.content ?? "";
+              const title = doc.title || note?.title || "未命名笔记";
+              return {
+                id: noteId || note?.id,
+                noteId: noteId || note?.id,
+                title,
+                contentMarkdown: content,
+                content: content,
+                tags: note?.tags || doc?.tags || [],
+                updatedAt: note?.updatedAt || doc?.updatedAt || Date.now(),
+                createdAt: note?.createdAt || doc?.createdAt || Date.now(),
+                ...note,
+              };
+            }
+          } catch (e) {
+            console.warn("[Note Curator] context.editor.getDocument 异常:", e);
           }
         }
-        if (context.workspace?.getActiveNote) {
-          const note = await context.workspace.getActiveNote();
-          if (note) return note;
+
+        // 2. 尝试从 editor.getActiveNoteId 兜底
+        if (context.editor?.getActiveNoteId) {
+          try {
+            const id = await context.editor.getActiveNoteId();
+            if (id && context.notes?.get) {
+              const note = await context.notes.get(id);
+              if (note) return note;
+            }
+          } catch (e) {}
         }
-        // 兜底取最近编辑的第一篇
-        const list = await context.notes.list({ limit: 1 });
-        if (list && list.length > 0) return list[0];
+
+        // 3. 尝试从 workspace.getActiveNote 兜底
+        if (context.workspace?.getActiveNote) {
+          try {
+            const note = await context.workspace.getActiveNote();
+            if (note) return note;
+          } catch (e) {}
+        }
+
+        // 4. 兜底获取最近的一篇笔记 (通过 context.notes.query)
+        if (context.notes?.query) {
+          try {
+            const qRes = await context.notes.query({ limit: 1 });
+            const list = Array.isArray(qRes) ? qRes : qRes?.notes || [];
+            if (list.length > 0) {
+              const noteId = list[0].id;
+              if (context.notes.get) {
+                try {
+                  const full = await context.notes.get(noteId);
+                  if (full) return full;
+                } catch (e) {}
+              }
+              return list[0];
+            }
+          } catch (e) {}
+        }
       } catch (e) {
         console.warn("[Note Curator] 获取当前笔记异常:", e);
       }
@@ -681,6 +850,8 @@ export default {
     async function openCuratorModal() {
       if (modalEl) closeModal();
 
+      await loadSettings();
+
       // 拉取当前笔记与全库笔记
       currentNote = await resolveActiveNote();
       if (!currentNote) {
@@ -689,7 +860,12 @@ export default {
       }
 
       try {
-        vaultNotes = (await context.notes.list({ limit: 300 })) || [];
+        if (context.notes?.query) {
+          const qRes = await context.notes.query({ limit: 300 });
+          vaultNotes = Array.isArray(qRes) ? qRes : qRes?.notes || [];
+        } else if (context.notes?.list) {
+          vaultNotes = (await context.notes.list({ limit: 300 })) || [];
+        }
       } catch (e) {
         vaultNotes = [];
       }
@@ -698,7 +874,7 @@ export default {
       const auditResult = auditNote(currentNote, vaultNotes);
       // 执行本地排版格式化预计算
       const rawContent = currentNote.contentMarkdown || currentNote.content || currentNote.plainText || "";
-      formattedCache = formatMarkdown(rawContent, context.settings);
+      formattedCache = formatMarkdown(rawContent, settings);
 
       // 构建 DOM
       modalEl = document.createElement("div");
@@ -806,6 +982,21 @@ export default {
                     ${auditResult.prescriptions.map((pr) => `<li class="ee-audit-item"><span class="ee-audit-bullet">➔</span><span>${escapeHtml(pr)}</span></li>`).join("")}
                   </ul>
                 </div>
+
+                <div class="ee-audit-box is-ai-review" style="grid-column: 1 / -1;">
+                  <div class="ee-audit-box-header" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span>🤖 AI 专家深度技术体检与盲区诊断</span>
+                      <span class="ee-curator-badge-pill" style="background: var(--ee-curator-purple-bg); color: var(--ee-curator-purple); font-size: 11px;">深度分析</span>
+                    </div>
+                    <button type="button" class="ee-btn-primary" id="ee-btn-trigger-ai-audit" style="height: 28px; padding: 0 12px; font-size: 12px; background: var(--ee-curator-purple);">
+                      ✨ 启动 AI 深度评审
+                    </button>
+                  </div>
+                  <div id="ee-ai-audit-content" style="font-size: 13px; line-height: 1.7; color: var(--ee-curator-text); padding-top: 6px;">
+                    点击上方按钮，让 AI（支持 EdgeEver 客户端原生已配置的 AI 或本地 Ollama 代理）深度通读全文，从核心技术亮点、论述漏洞与潜在知识盲区进行专业客观评审。
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -847,6 +1038,12 @@ export default {
             <!-- TAB 3: 内容重构与扩写 -->
             <div class="ee-curator-panel" id="tab-copilot">
               <div class="ee-copilot-card-grid">
+                <div class="ee-copilot-action-card is-ai-card" data-action="ai-rewrite">
+                  <div class="ee-copilot-card-icon">✨</div>
+                  <div class="ee-copilot-card-title">AI 全文深度重构与润色</div>
+                  <div class="ee-copilot-card-desc">智能重塑大纲逻辑、优化段落过渡与小节编号，补充知识归纳与排版规范。</div>
+                </div>
+
                 <div class="ee-copilot-action-card" data-action="tldr">
                   <div class="ee-copilot-card-icon">⚡</div>
                   <div class="ee-copilot-card-title">一键提炼 TL;DR 核心要点</div>
@@ -867,9 +1064,10 @@ export default {
               </div>
 
               <div class="ee-copilot-result-box" style="display: none;" id="ee-copilot-box">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                   <span style="font-weight: 700; font-size: 13.5px;" id="ee-copilot-box-title">重构内容预览</span>
                   <div style="display: flex; gap: 8px;">
+                    <button type="button" class="ee-btn-primary" id="ee-copilot-replace-btn" style="display: none; background: var(--ee-curator-purple);">一键替换整篇正文</button>
                     <button type="button" class="ee-btn-secondary" id="ee-copilot-append-btn">追加到文末</button>
                     <button type="button" class="ee-btn-primary" id="ee-copilot-insert-head-btn">插入到文首</button>
                   </div>
@@ -1028,6 +1226,32 @@ export default {
         };
       }
 
+      // 绑定 Tab 1 AI 专家体检评审
+      const aiAuditBtn = modalEl.querySelector("#ee-btn-trigger-ai-audit");
+      const aiAuditContent = modalEl.querySelector("#ee-ai-audit-content");
+      if (aiAuditBtn && aiAuditContent) {
+        aiAuditBtn.onclick = async () => {
+          aiAuditBtn.classList.add("is-loading-ai");
+          aiAuditBtn.disabled = true;
+          aiAuditContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（模型: ${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置模型" : (settings.aiModel || "本地代理")}）进行全景审查评估...</span>`;
+
+          const rawText = currentNote.contentMarkdown || currentNote.content || "";
+          try {
+            const sys = "你是一位资深的知识管理架构师与技术专家。请对这篇笔记进行全方位深度体检诊断。从【1. 核心亮点与技术沉淀价值】、【2. 知识盲区、漏洞与潜在风险】、【3. 下一步扩充与知识衍生建议】三个维度进行深度、专业、客观的剖析。使用 Markdown 格式直接输出诊断内容。";
+            const pmt = `笔记标题：《${currentNote.title}》\n\n笔记正文：\n${rawText.slice(0, 4000)}`;
+            const result = await callAi(pmt, sys, (msg) => {
+              aiAuditContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
+            });
+            aiAuditContent.innerHTML = `<div style="white-space: pre-wrap; font-family: inherit; line-height: 1.7;">${escapeHtml(result)}</div>`;
+          } catch (e) {
+            aiAuditContent.innerHTML = `<span style="color: var(--ee-curator-warning);">⚠️ AI 体检未能完成: ${escapeHtml(e.message || "连接失败")}。已保留本地五维雷达诊断，您可在设置中检查客户端 AI 或配置本地 Ollama。</span>`;
+          } finally {
+            aiAuditBtn.classList.remove("is-loading-ai");
+            aiAuditBtn.disabled = false;
+          }
+        };
+      }
+
       // 绑定重构卡片点击
       const copilotCards = modalEl.querySelectorAll(".ee-copilot-action-card");
       const copilotBox = modalEl.querySelector("#ee-copilot-box");
@@ -1035,27 +1259,85 @@ export default {
       const copilotContent = modalEl.querySelector("#ee-copilot-content");
       const insertHeadBtn = modalEl.querySelector("#ee-copilot-insert-head-btn");
       const appendBtn = modalEl.querySelector("#ee-copilot-append-btn");
+      const replaceBtn = modalEl.querySelector("#ee-copilot-replace-btn");
       let currentGeneratedText = "";
 
       copilotCards.forEach((card) => {
-        card.onclick = () => {
+        card.onclick = async () => {
           const act = card.dataset.action;
-          if (act === "tldr") {
-            copilotTitle.textContent = "⚡ TL;DR 核心要点备忘";
-            const kws = extractKeywords(currentNote.title + " " + rawContent, 5);
-            currentGeneratedText = `> [!NOTE] 核心要点备忘 (TL;DR)\n> - **主题对象**：${currentNote.title}\n> - **关键术语**：${kws.map((k) => `\`${k}\``).join(" / ")}\n> - **核心目标**：提供规范化的技术实施路径与生产环境最佳实践。\n\n`;
-          } else if (act === "troubleshoot") {
-            copilotTitle.textContent = "🛠️ 异常排错与避坑指南";
-            currentGeneratedText = `\n\n### 4. 常见异常排查与应急预案\n| 常见现象 / 报错 | 根本原因 | 推荐对策与排查路径 |\n|---|---|---|\n| 权限校验失败 (AUTHORITY_CHECK) | 缺失对应业务对象授权 | 检查 SU53 权限日志，分配对应 PFCG 角色 |\n| 运行时数据类型不匹配 | 隐式转换或入参结构变动 | 使用 SE38 检查最新 DDIC 结构定义 |\n| 高并发性能堵塞 | 缺少局部索引或全表扫描 | 优化 WHERE 条件索引覆盖，开启本地缓存机制 |\n`;
-          } else if (act === "cheatsheet") {
-            copilotTitle.textContent = "📋 参数与配置速查表";
-            currentGeneratedText = `\n\n### 5. 核心参数与状态速查\n| 配置项 / 参数 | 默认取值 | 取值范围 / 含义 | 建议设定 |\n|---|---|---|---|\n| ENABLE_SWITCH | \`ABAP_TRUE\` | 开启 / 关闭管控 | 生产常开 |\n| LOG_LEVEL | \`INFO\` | DEBUG / INFO / ERROR | 故障时切 DEBUG |\n| TIMEOUT_SEC | \`30\` | 毫秒/秒级超时阈值 | 建议 15~30s |\n`;
+          if (replaceBtn) {
+            replaceBtn.style.display = act === "ai-rewrite" ? "inline-flex" : "none";
+          }
+
+          card.classList.add("is-loading-ai");
+          copilotBox.style.display = "flex";
+          copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置模型" : (settings.aiModel || "本地/自定义代理")}）生成中，请稍候...</span>`;
+
+          const rawText = currentNote.contentMarkdown || currentNote.content || "";
+
+          try {
+            if (act === "ai-rewrite") {
+              copilotTitle.textContent = "✨ AI 全文智能重构与深度润色";
+              const sys = "你是一位知识库架构与技术文档撰写专家。请保持笔记核心逻辑、参数与代码不变，对整篇 Markdown 进行结构重构与表达润色，完善小节标题大纲（H1/H2/H3），规范中英文混排，直接输出润色后的 Markdown 正文，不要有任何多余闲聊。";
+              const pmt = `笔记标题：《${currentNote.title}》\n\n笔记原始内容：\n${rawText}`;
+              currentGeneratedText = await callAi(pmt, sys, (msg) => {
+                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
+              });
+            } else if (act === "tldr") {
+              copilotTitle.textContent = "⚡ AI 提炼 TL;DR 核心要点";
+              const sys = "请为这篇笔记提炼一段高质量的 TL;DR 核心要点备忘卡片（采用 > [!NOTE] 引用块语法），包含【主题对象】、【核心概念与关键函数】、【3 条核心决策/实施要点】。直接输出 Markdown 引用块。";
+              const pmt = `笔记标题：《${currentNote.title}》\n\n笔记内容：\n${rawText.slice(0, 3000)}`;
+              currentGeneratedText = await callAi(pmt, sys, (msg) => {
+                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
+              });
+            } else if (act === "troubleshoot") {
+              copilotTitle.textContent = "🛠️ 智能排错与避坑对策";
+              const sys = "请结合笔记主题，生成一份【常见异常排查与应急预案】Markdown 表格，包含【常见现象/报错】、【根本原因】、【推荐对策与排查路径】，重点聚焦实战避坑经验。直接输出 Markdown 表格。";
+              const pmt = `笔记主题：《${currentNote.title}》\n\n笔记核心内容：\n${rawText.slice(0, 3000)}`;
+              currentGeneratedText = await callAi(pmt, sys, (msg) => {
+                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
+              });
+            } else if (act === "cheatsheet") {
+              copilotTitle.textContent = "📋 生成参数与状态速查表";
+              const sys = "请从以下笔记中提炼核心参数、关键表字段或配置项，整理为一份结构化 Markdown 对比速查表格（包含【配置项/字段】、【类型/默认值】、【取值说明】、【建议设定】）。直接输出 Markdown 表格。";
+              const pmt = `笔记主题：《${currentNote.title}》\n\n笔记核心内容：\n${rawText.slice(0, 3000)}`;
+              currentGeneratedText = await callAi(pmt, sys, (msg) => {
+                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
+              });
+            }
+          } catch (aiErr) {
+            console.warn("[Note Curator] AI 生成失败，降级为本地规则模板:", aiErr);
+            if (context.ui?.showNotice) {
+              context.ui.showNotice(`AI 服务提示: ${aiErr.message || "未能连接"}，已自动降级为本地高精知识模板`, { type: "info" });
+            }
+            if (act === "ai-rewrite") {
+              copilotTitle.textContent = "✨ 本地排版净化与大纲重构 (离线)";
+              currentGeneratedText = formatMarkdown(rawText, settings);
+            } else if (act === "tldr") {
+              copilotTitle.textContent = "⚡ TL;DR 核心要点备忘 (本地规则)";
+              const kws = extractKeywords(currentNote.title + " " + rawText, 5);
+              currentGeneratedText = `> [!NOTE] 核心要点备忘 (TL;DR)\n> - **主题对象**：${currentNote.title}\n> - **关键术语**：${kws.map((k) => `\`${k}\``).join(" / ")}\n> - **核心目标**：提供规范化的技术实施路径与生产环境最佳实践。\n\n`;
+            } else if (act === "troubleshoot") {
+              copilotTitle.textContent = "🛠️ 异常排错与避坑指南 (离线模板)";
+              currentGeneratedText = `\n\n### 4. 常见异常排查与应急预案\n| 常见现象 / 报错 | 根本原因 | 推荐对策与排查路径 |\n|---|---|---|\n| 权限校验失败 (AUTHORITY_CHECK) | 缺失对应业务对象授权 | 检查 SU53 权限日志，分配对应 PFCG 角色 |\n| 运行时数据类型不匹配 | 隐式转换或入参结构变动 | 使用 SE38 检查最新 DDIC 结构定义 |\n| 高并发性能堵针 | 缺少局部索引或全表扫描 | 优化 WHERE 条件索引覆盖，开启本地缓存机制 |\n`;
+            } else if (act === "cheatsheet") {
+              copilotTitle.textContent = "📋 参数与配置速查表 (离线模板)";
+              currentGeneratedText = `\n\n### 5. 核心参数与状态速查\n| 配置项 / 参数 | 默认取值 | 取值范围 / 含义 | 建议设定 |\n|---|---|---|---|\n| ENABLE_SWITCH | \`ABAP_TRUE\` | 开启 / 关闭管控 | 生产常开 |\n| LOG_LEVEL | \`INFO\` | DEBUG / INFO / ERROR | 故障时切 DEBUG |\n| TIMEOUT_SEC | \`30\` | 毫秒/秒级超时阈值 | 建议 15~30s |\n`;
+            }
+          } finally {
+            card.classList.remove("is-loading-ai");
           }
 
           copilotContent.textContent = currentGeneratedText;
-          copilotBox.style.display = "flex";
         };
       });
+
+      if (replaceBtn) {
+        replaceBtn.onclick = async () => {
+          if (!currentGeneratedText) return;
+          await applyFormattedContent(currentGeneratedText);
+        };
+      }
 
       insertHeadBtn.onclick = async () => {
         if (!currentGeneratedText) return;
@@ -1140,8 +1422,9 @@ export default {
         tags.push(newTag);
         currentNote.tags = tags;
         try {
-          if (context.notes?.update) {
-            await context.notes.update(currentNote.id, { tags });
+          const noteId = currentNote.id || currentNote.noteId;
+          if (noteId && context.notes?.update) {
+            await context.notes.update(noteId, { tags });
             if (context.ui?.showNotice) context.ui.showNotice(`已成功添加标签 #${newTag}`, { type: "success" });
             const curTagsBox = modalEl.querySelector("#ee-cur-tags");
             if (curTagsBox) {
@@ -1176,11 +1459,19 @@ export default {
     async function applyFormattedContent(newContent) {
       if (!currentNote || !newContent) return;
       try {
-        if (context.notes?.update) {
-          await context.notes.update(currentNote.id, { contentMarkdown: newContent, content: newContent });
-        } else if (context.editor?.setContent) {
-          await context.editor.setContent(newContent);
+        const noteId = currentNote.id || currentNote.noteId;
+        if (noteId && context.notes?.update) {
+          await context.notes.update(noteId, { contentMarkdown: newContent, content: newContent });
         }
+        if (context.editor?.setContent) {
+          await context.editor.setContent(newContent);
+        } else if (noteId && context.editor?.openDocument) {
+          await context.editor.openDocument({ noteId: noteId });
+        }
+        currentNote.contentMarkdown = newContent;
+        currentNote.content = newContent;
+        formattedCache = newContent;
+
         if (context.ui?.showNotice) {
           context.ui.showNotice("🎉 笔记排版与内容已成功优化并保存！", { type: "success" });
         }
@@ -1188,7 +1479,7 @@ export default {
       } catch (err) {
         console.warn("[Note Curator] 写入笔记异常:", err);
         if (context.ui?.showNotice) {
-          context.ui.showNotice("保存失败，请检查编辑权限", { type: "error" });
+          context.ui.showNotice("保存失败: " + (err.message || "请检查编辑权限"), { type: "error" });
         }
       }
     }

@@ -510,6 +510,22 @@
 .is-pros .ee-audit-bullet { color: var(--ee-curator-success); }
 .is-cons .ee-audit-bullet { color: var(--ee-curator-warning); }
 .is-prescription .ee-audit-bullet { color: var(--ee-curator-primary); }
+.is-ai-review .ee-audit-bullet { color: var(--ee-curator-purple); }
+
+.ee-audit-box.is-ai-review {
+  border-left: 4px solid var(--ee-curator-purple);
+  background: var(--ee-curator-purple-bg);
+}
+
+@keyframes ee-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.99); }
+}
+
+.is-loading-ai {
+  animation: ee-pulse 1.3s infinite ease-in-out !important;
+  pointer-events: none !important;
+}
 
 /* ==================== 8. TAB 2: 排版净化器与 Diff 对比 ==================== */
 .ee-format-toolbar {
@@ -624,8 +640,8 @@
 /* ==================== 9. TAB 3: 内容重构与扩写 ==================== */
 .ee-copilot-card-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
 }
 
 .ee-copilot-action-card {
@@ -638,6 +654,16 @@
   gap: 10px;
   cursor: pointer;
   transition: all 0.18s ease;
+  position: relative;
+}
+
+.ee-copilot-action-card.is-ai-card {
+  border-color: rgba(130, 80, 223, 0.4);
+}
+
+.ee-copilot-action-card.is-ai-card:hover {
+  border-color: var(--ee-curator-purple);
+  background: var(--ee-curator-purple-bg);
 }
 
 .ee-copilot-action-card:hover {
