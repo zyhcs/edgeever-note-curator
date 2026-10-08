@@ -1081,7 +1081,7 @@ export default {
               <div class="ee-curator-header-info">
                 <div class="ee-curator-title-row">
                   <span class="ee-curator-title" title="${escapeHtml(currentNote.title)}">${escapeHtml(currentNote.title || "无标题笔记")}</span>
-                  <span class="ee-curator-badge-pill">v1.2.0</span>
+                  <span class="ee-curator-badge-pill">v1.2.1</span>
                   ${isBlankNote ? '<span class="ee-curator-badge-pill" style="background: rgba(46, 160, 67, 0.15); color: var(--ee-curator-success); font-weight: 600;">🌱 空白笔记</span>' : ''}
                 </div>
                 <div class="ee-curator-header-sub">
@@ -1297,31 +1297,39 @@ export default {
 
                 <!-- 预设方案切换与持久化管理条 -->
                 <div class="ee-studio-preset-bar">
-                  <div class="ee-preset-bar-left">
-                    <span class="ee-preset-bar-label">🔖 预设方案：</span>
-                    <select class="ee-studio-select" id="ee-preset-selector">
-                      <optgroup label="系统内置方案" id="ee-preset-opt-system">
-                        <option value="blank-draft">🌱 空白笔记从零起草</option>
-                        <option value="ai-rewrite">✨ AI 全文重构与润色</option>
-                        <option value="tldr">⚡ 一键提炼 TL;DR 核心要点</option>
-                        <option value="troubleshoot">🛠️ 异常排查与避坑指南</option>
-                        <option value="cheatsheet">📋 核心概念与参数速查表</option>
-                        <option value="custom">🎯 自由定制与定向扩写</option>
-                      </optgroup>
-                      <optgroup label="⭐ 我的自定义预设" id="ee-preset-opt-custom">
-                      </optgroup>
-                    </select>
+                  <div class="ee-preset-bar-top">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                      <span class="ee-preset-bar-label">⭐ 我的自定义预设库：</span>
+                      <div class="ee-custom-presets-chips" id="ee-custom-presets-chips">
+                        <!-- 动态渲染自定义预设药丸 -->
+                      </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <button type="button" class="ee-btn-secondary" id="ee-preset-save-btn" style="height: 26px; padding: 0 10px; font-size: 11.5px; border-color: var(--ee-curator-purple); color: var(--ee-curator-purple);">
+                        + 保存当前为新预设
+                      </button>
+                    </div>
                   </div>
-                  <div class="ee-preset-bar-actions">
-                    <button type="button" class="ee-btn-secondary" id="ee-preset-save-btn" style="height: 26px; padding: 0 10px; font-size: 11.5px;" title="将当前角色、规则与提示词保存为新预设">
-                      💾 保存为新预设
-                    </button>
-                    <button type="button" class="ee-btn-secondary" id="ee-preset-update-btn" style="display: none; height: 26px; padding: 0 10px; font-size: 11.5px;" title="将当前修改覆盖保存到当前自定义预设">
-                      🔄 覆盖保存
-                    </button>
-                    <button type="button" class="ee-btn-danger" id="ee-preset-del-btn" style="display: none; height: 26px; padding: 0 10px; font-size: 11.5px;" title="删除当前选中的自定义预设">
-                      🗑️ 删除
-                    </button>
+
+                  <!-- 内嵌式新预设名称输入弹栏 (直接在界面内输入，绝不依赖 window.prompt) -->
+                  <div class="ee-preset-create-form" id="ee-preset-create-form" style="display: none;">
+                    <span style="font-size: 12px; font-weight: 600; white-space: nowrap;">方案名称：</span>
+                    <input type="text" class="ee-studio-input" id="ee-new-preset-name-input" placeholder="输入预设名称 (如：接口设计规范 / 架构方案模板 / 故障复盘)..." style="flex: 1; min-width: 200px; height: 28px;" />
+                    <button type="button" class="ee-btn-primary" id="ee-confirm-save-preset-btn" style="height: 28px; padding: 0 12px; font-size: 11.5px; background: var(--ee-curator-purple);">确定保存</button>
+                    <button type="button" class="ee-btn-secondary" id="ee-cancel-save-preset-btn" style="height: 28px; padding: 0 10px; font-size: 11.5px;">取消</button>
+                  </div>
+
+                  <!-- 当前处于自定义预设时的提示与覆盖操作条 -->
+                  <div class="ee-preset-active-bar" id="ee-preset-active-bar" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px;">
+                      <span style="color: var(--ee-curator-purple); font-weight: 600;">正在使用预设：</span>
+                      <span id="ee-active-preset-name" style="font-weight: 700; color: var(--ee-curator-text);"></span>
+                      <span style="font-size: 11px; color: var(--ee-curator-text-muted);">(调整下方角色或规则后，可直接覆盖保存)</span>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                      <button type="button" class="ee-btn-secondary" id="ee-preset-update-btn" style="height: 24px; padding: 0 8px; font-size: 11px;">🔄 覆盖保存当前修改</button>
+                      <button type="button" class="ee-btn-danger" id="ee-preset-del-btn" style="height: 24px; padding: 0 8px; font-size: 11px;">🗑️ 删除此预设</button>
+                    </div>
                   </div>
                 </div>
 
@@ -1659,9 +1667,14 @@ export default {
       const followupInput = modalEl.querySelector("#ee-followup-input");
       const followupBtn = modalEl.querySelector("#ee-followup-btn");
 
-      const presetSelector = modalEl.querySelector("#ee-preset-selector");
-      const presetOptCustom = modalEl.querySelector("#ee-preset-opt-custom");
+      const customPresetsChips = modalEl.querySelector("#ee-custom-presets-chips");
       const presetSaveBtn = modalEl.querySelector("#ee-preset-save-btn");
+      const presetCreateForm = modalEl.querySelector("#ee-preset-create-form");
+      const newPresetNameInput = modalEl.querySelector("#ee-new-preset-name-input");
+      const confirmSavePresetBtn = modalEl.querySelector("#ee-confirm-save-preset-btn");
+      const cancelSavePresetBtn = modalEl.querySelector("#ee-cancel-save-preset-btn");
+      const presetActiveBar = modalEl.querySelector("#ee-preset-active-bar");
+      const activePresetNameSpan = modalEl.querySelector("#ee-active-preset-name");
       const presetUpdateBtn = modalEl.querySelector("#ee-preset-update-btn");
       const presetDelBtn = modalEl.querySelector("#ee-preset-del-btn");
 
@@ -1731,33 +1744,37 @@ export default {
       let currentGeneratedText = "";
       const selectedRefNotes = new Map(); // id -> note object
 
-      // 渲染预设方案下拉选单
-      function renderPresetDropdown() {
-        if (!presetOptCustom || !presetSelector) return;
-        presetOptCustom.innerHTML = "";
+      // 渲染自定义预设药丸组与状态条
+      function renderPresetChips() {
+        if (!customPresetsChips) return;
+        customPresetsChips.innerHTML = "";
 
         if (customPresets.length === 0) {
-          const emptyOpt = document.createElement("option");
-          emptyOpt.value = "";
-          emptyOpt.disabled = true;
-          emptyOpt.textContent = "暂无自定义预设 (可在右侧保存当前)";
-          presetOptCustom.appendChild(emptyOpt);
+          customPresetsChips.innerHTML = `<span style="font-size: 11.5px; color: var(--ee-curator-text-muted);">暂无自定义预设，配置下方规则后点击右侧保存</span>`;
         } else {
           customPresets.forEach((p) => {
-            const opt = document.createElement("option");
-            opt.value = p.id;
-            opt.textContent = `⭐ ${p.name}`;
-            presetOptCustom.appendChild(opt);
+            const chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = `ee-preset-chip ${p.id === activeAction ? "is-active" : ""}`;
+            chip.innerHTML = `<span>⭐ ${escapeHtml(p.name)}</span>`;
+            chip.title = `点击加载预设【${p.name}】`;
+            chip.onclick = () => {
+              applyPreset(p.id);
+            };
+            customPresetsChips.appendChild(chip);
           });
         }
 
-        // 同步选中项
-        presetSelector.value = activeAction;
-
-        // 根据是否为自定义预设，切换覆盖/删除操作按钮显示
-        const isCustom = customPresets.some((p) => p.id === activeAction);
-        if (presetUpdateBtn) presetUpdateBtn.style.display = isCustom ? "inline-flex" : "none";
-        if (presetDelBtn) presetDelBtn.style.display = isCustom ? "inline-flex" : "none";
+        // 更新当前活跃状态条
+        const activeCustom = customPresets.find((p) => p.id === activeAction);
+        if (presetActiveBar && activePresetNameSpan) {
+          if (activeCustom) {
+            activePresetNameSpan.textContent = `【${activeCustom.name}】`;
+            presetActiveBar.style.display = "flex";
+          } else {
+            presetActiveBar.style.display = "none";
+          }
+        }
       }
 
       // 初始化参考笔记下拉框
@@ -1887,7 +1904,7 @@ export default {
           replaceBtn.textContent = (isBlankNote || actKey === "blank-draft") ? "✨ 一键写入空白正文" : "一键替换整篇正文";
         }
 
-        renderPresetDropdown();
+        renderPresetChips();
       }
 
       // 卡片点击事件：应用预设并平滑滚动至设定区
@@ -1902,17 +1919,11 @@ export default {
         };
       });
 
-      // 预设方案下拉选单切换
-      if (presetSelector) {
-        presetSelector.onchange = () => {
-          const val = presetSelector.value;
-          if (val) applyPreset(val);
-        };
-      }
-
-      // 💾 保存当前为新预设
+      // 展开新预设创建输入栏 (直接在界面内输入，绝不依赖 window.prompt)
       if (presetSaveBtn) {
-        presetSaveBtn.onclick = async () => {
+        presetSaveBtn.onclick = () => {
+          if (!presetCreateForm) return;
+          presetCreateForm.style.display = "flex";
           let defaultName = "";
           if (activeAction.startsWith("custom_")) {
             const cur = customPresets.find((p) => p.id === activeAction);
@@ -1922,45 +1933,77 @@ export default {
           } else {
             defaultName = "技术写作方案";
           }
-
-          let name = "";
-          if (window.prompt) {
-            name = window.prompt("请输入新自定义预设方案的名称：", defaultName);
+          if (newPresetNameInput) {
+            newPresetNameInput.value = defaultName;
+            newPresetNameInput.focus();
+            newPresetNameInput.select();
           }
-          if (!name || !name.trim()) return;
-          name = name.trim();
+        };
+      }
 
-          let activeRoleKey = "custom";
-          rolePills.forEach((p) => {
-            if (p.classList.contains("is-active")) activeRoleKey = p.dataset.role;
+      // 取消保存新预设
+      if (cancelSavePresetBtn) {
+        cancelSavePresetBtn.onclick = () => {
+          if (presetCreateForm) presetCreateForm.style.display = "none";
+        };
+      }
+
+      // 执行保存新预设
+      async function doSaveNewPreset() {
+        const name = newPresetNameInput?.value?.trim();
+        if (!name) {
+          if (context.ui?.showNotice) context.ui.showNotice("请输入预设方案名称", { type: "info" });
+          newPresetNameInput?.focus();
+          return;
+        }
+
+        let activeRoleKey = "custom";
+        rolePills.forEach((p) => {
+          if (p.classList.contains("is-active")) activeRoleKey = p.dataset.role;
+        });
+
+        const activeRules = [];
+        if (rulesCheckGroup) {
+          rulesCheckGroup.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
+            if (cb.dataset.rule) activeRules.push(cb.dataset.rule);
           });
+        }
 
-          const activeRules = [];
-          if (rulesCheckGroup) {
-            rulesCheckGroup.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
-              if (cb.dataset.rule) activeRules.push(cb.dataset.rule);
-            });
+        const newPreset = {
+          id: "custom_" + Date.now(),
+          name: name,
+          roleKey: activeRoleKey,
+          rolePrompt: rolePromptInput?.value?.trim() || "",
+          rules: activeRules,
+          customRule: customRulesInput?.value?.trim() || "",
+          prompt: promptInput?.value?.trim() || "",
+          canReplace: true
+        };
+
+        customPresets.push(newPreset);
+        await saveStoredCustomPresets(customPresets);
+
+        if (presetCreateForm) presetCreateForm.style.display = "none";
+
+        if (context.ui?.showNotice) {
+          context.ui.showNotice(`✅ 已成功保存自定义预设【${name}】！可在上方直接点击调用。`, { type: "info" });
+        }
+
+        applyPreset(newPreset.id);
+      }
+
+      if (confirmSavePresetBtn) {
+        confirmSavePresetBtn.onclick = doSaveNewPreset;
+      }
+
+      if (newPresetNameInput) {
+        newPresetNameInput.onkeydown = (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            doSaveNewPreset();
+          } else if (e.key === "Escape") {
+            if (presetCreateForm) presetCreateForm.style.display = "none";
           }
-
-          const newPreset = {
-            id: "custom_" + Date.now(),
-            name: name,
-            roleKey: activeRoleKey,
-            rolePrompt: rolePromptInput?.value?.trim() || "",
-            rules: activeRules,
-            customRule: customRulesInput?.value?.trim() || "",
-            prompt: promptInput?.value?.trim() || "",
-            canReplace: true
-          };
-
-          customPresets.push(newPreset);
-          await saveStoredCustomPresets(customPresets);
-
-          if (context.ui?.showNotice) {
-            context.ui.showNotice(`✅ 已成功保存自定义预设【${name}】！下次可直接调用。`, { type: "info" });
-          }
-
-          applyPreset(newPreset.id);
         };
       }
 
@@ -1993,6 +2036,7 @@ export default {
           if (context.ui?.showNotice) {
             context.ui.showNotice(`✅ 已覆盖保存预设【${customPresets[foundIdx].name}】！`, { type: "info" });
           }
+          renderPresetChips();
         };
       }
 
@@ -2002,7 +2046,12 @@ export default {
           const found = customPresets.find((p) => p.id === activeAction);
           if (!found) return;
 
-          const ok = window.confirm ? window.confirm(`确定要删除自定义预设【${found.name}】吗？`) : true;
+          let ok = true;
+          try {
+            if (typeof window.confirm === "function") {
+              ok = window.confirm(`确定要删除自定义预设【${found.name}】吗？`);
+            }
+          } catch (e) {}
           if (!ok) return;
 
           customPresets = customPresets.filter((p) => p.id !== activeAction);

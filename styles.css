@@ -1156,35 +1156,87 @@
   }
 }
 
-/* 预设方案持久化切换栏 */
+/* 预设方案持久化切换与管理栏 */
 .ee-studio-preset-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(130, 80, 223, 0.04);
+  border-bottom: 1px solid var(--ee-curator-border);
+}
+
+.ee-preset-bar-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  background: rgba(128, 128, 128, 0.035);
-  border-bottom: 1px solid var(--ee-curator-border);
-  gap: 10px;
   flex-wrap: wrap;
-}
-
-.ee-preset-bar-left {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .ee-preset-bar-label {
   font-size: 12px;
   font-weight: 600;
   color: var(--ee-curator-text);
+  white-space: nowrap;
 }
 
-.ee-preset-bar-actions {
+.ee-custom-presets-chips {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+}
+
+.ee-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  color: var(--ee-curator-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.ee-preset-chip:hover {
+  border-color: var(--ee-curator-purple);
+  color: var(--ee-curator-purple);
+  background: var(--ee-curator-purple-bg);
+}
+
+.ee-preset-chip.is-active {
+  background: var(--ee-curator-purple-bg);
+  border-color: var(--ee-curator-purple);
+  color: var(--ee-curator-purple);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--ee-curator-purple);
+}
+
+.ee-preset-create-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--ee-curator-surface);
+  border: 1px dashed var(--ee-curator-purple);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.ee-preset-active-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(130, 80, 223, 0.08);
+  border-radius: 6px;
 }
 
 .ee-btn-danger {
@@ -1203,4 +1255,5 @@
   background: rgba(207, 34, 46, 0.1);
   border-color: var(--ee-curator-danger);
 }
+
 
