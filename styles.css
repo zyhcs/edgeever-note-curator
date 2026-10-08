@@ -668,56 +668,266 @@
   border-color: var(--ee-curator-text-muted);
 }
 
-/* ==================== 9. TAB 3: 内容重构与扩写 ==================== */
+/* ==================== 9. TAB 3: 内容重构与扩写 (智能工作室) ==================== */
 .ee-copilot-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
 }
 
 .ee-copilot-action-card {
   background: var(--ee-curator-surface);
   border: 1px solid var(--ee-curator-border);
-  border-radius: 10px;
-  padding: 18px;
+  border-radius: 8px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   cursor: pointer;
   transition: all 0.18s ease;
   position: relative;
 }
 
 .ee-copilot-action-card.is-ai-card {
-  border-color: rgba(130, 80, 223, 0.4);
+  border-color: rgba(130, 80, 223, 0.35);
 }
 
-.ee-copilot-action-card.is-ai-card:hover {
-  border-color: var(--ee-curator-purple);
-  background: var(--ee-curator-purple-bg);
+.ee-copilot-action-card.is-selected {
+  border-color: var(--ee-curator-purple) !important;
+  background: var(--ee-curator-purple-bg) !important;
+  box-shadow: 0 0 0 2px rgba(130, 80, 223, 0.25);
 }
 
 .ee-copilot-action-card:hover {
   border-color: var(--ee-curator-primary);
   background: var(--ee-curator-primary-light);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(9, 105, 218, 0.15);
+  transform: translateY(-1px);
 }
 
 .ee-copilot-card-icon {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .ee-copilot-card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--ee-curator-text);
 }
 
 .ee-copilot-card-desc {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ee-curator-text-muted);
+  line-height: 1.4;
+}
+
+/* 控制台整体容器 */
+.ee-copilot-studio-box {
+  background: var(--ee-curator-surface);
+  border: 1px solid var(--ee-curator-border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.ee-studio-header {
+  padding: 10px 16px;
+  background: rgba(128, 128, 128, 0.05);
+  border-bottom: 1px solid var(--ee-curator-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ee-studio-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ee-studio-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+@media (max-width: 680px) {
+  .ee-studio-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.ee-studio-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ee-curator-text);
+  padding-top: 6px;
+}
+
+.ee-studio-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 角色药丸组 */
+.ee-studio-pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ee-studio-pill {
+  font-size: 11.5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: var(--ee-curator-bg);
+  border: 1px solid var(--ee-curator-border);
+  color: var(--ee-curator-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.ee-studio-pill:hover {
+  border-color: var(--ee-curator-purple);
+  color: var(--ee-curator-text);
+}
+
+.ee-studio-pill.is-active {
+  background: var(--ee-curator-purple-bg);
+  border-color: var(--ee-curator-purple);
+  color: var(--ee-curator-purple);
+  font-weight: 600;
+}
+
+/* 规则复选框组 */
+.ee-studio-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.ee-studio-check {
+  font-size: 11.5px;
+  color: var(--ee-curator-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ee-studio-check input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--ee-curator-purple);
+}
+
+/* 输入框与文本域 */
+.ee-studio-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ee-curator-border);
+  background: var(--ee-curator-bg);
+  color: var(--ee-curator-text);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ee-studio-input:focus {
+  border-color: var(--ee-curator-purple);
+}
+
+.ee-studio-select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--ee-curator-border);
+  background: var(--ee-curator-bg);
+  color: var(--ee-curator-text);
+  font-size: 11.5px;
+  outline: none;
+  max-width: 260px;
+  cursor: pointer;
+}
+
+.ee-studio-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--ee-curator-border);
+  background: var(--ee-curator-bg);
+  color: var(--ee-curator-text);
+  font-size: 12.5px;
   line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.ee-studio-textarea:focus {
+  border-color: var(--ee-curator-purple);
+}
+
+/* 参考笔记药丸 */
+.ee-ref-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+
+.ee-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(9, 105, 218, 0.08);
+  border: 1px solid rgba(9, 105, 218, 0.25);
+  color: var(--ee-curator-primary);
+  font-size: 11.5px;
+}
+
+.ee-ref-chip-del {
+  cursor: pointer;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.ee-ref-chip-del:hover {
+  opacity: 1;
+  color: var(--ee-curator-danger);
+}
+
+.ee-ref-suggest-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px dashed var(--ee-curator-border);
+  background: transparent;
+  color: var(--ee-curator-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ee-ref-suggest-btn:hover {
+  border-color: var(--ee-curator-primary);
+  color: var(--ee-curator-primary);
+  background: var(--ee-curator-primary-light);
 }
 
 .ee-copilot-result-box {
@@ -741,6 +951,13 @@
   border: 1px solid var(--ee-curator-border);
   max-height: 320px;
   overflow-y: auto;
+}
+
+.ee-copilot-followup-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 /* ==================== 10. TAB 4: 知识网络与局域图谱 ==================== */

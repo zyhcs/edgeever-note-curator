@@ -1192,44 +1192,141 @@ export default {
               </div>
             </div>
 
-            <!-- TAB 3: 内容重构与扩写 -->
+            <!-- TAB 3: 内容重构与扩写 (智能工作室) -->
             <div class="ee-curator-panel" id="tab-copilot">
+              <!-- 顶部：模式预设卡片网格 -->
               <div class="ee-copilot-card-grid">
-                <div class="ee-copilot-action-card is-ai-card" data-action="ai-rewrite">
+                <div class="ee-copilot-action-card is-ai-card is-selected" data-action="ai-rewrite">
                   <div class="ee-copilot-card-icon">✨</div>
                   <div class="ee-copilot-card-title">AI 全文深度重构与润色</div>
-                  <div class="ee-copilot-card-desc">智能重塑大纲逻辑、优化段落过渡与小节编号，补充知识归纳与排版规范。</div>
+                  <div class="ee-copilot-card-desc">规范大纲逻辑、优化段落过渡，补充知识归纳。</div>
                 </div>
 
                 <div class="ee-copilot-action-card" data-action="tldr">
                   <div class="ee-copilot-card-icon">⚡</div>
                   <div class="ee-copilot-card-title">一键提炼 TL;DR 核心要点</div>
-                  <div class="ee-copilot-card-desc">自动在文首提炼 30 秒备忘卡，包含业务场景、核心类/函数与决策要点。</div>
+                  <div class="ee-copilot-card-desc">文首提炼 30 秒备忘卡（主题、关键类/参数与决策）。</div>
                 </div>
 
                 <div class="ee-copilot-action-card" data-action="troubleshoot">
                   <div class="ee-copilot-card-icon">🛠️</div>
                   <div class="ee-copilot-card-title">生成异常排查与避坑指南</div>
-                  <div class="ee-copilot-card-desc">智能生成“高频疑问、异常根因分析与避坑对策”结构化章节骨架。</div>
+                  <div class="ee-copilot-card-desc">生成“高频疑问、潜在根因与应急预案”对策表。</div>
                 </div>
 
                 <div class="ee-copilot-action-card" data-action="cheatsheet">
                   <div class="ee-copilot-card-icon">📋</div>
                   <div class="ee-copilot-card-title">生成核心概念与参数速查表</div>
-                  <div class="ee-copilot-card-desc">自动将文中关键概念、参数或配置项提取为结构化 Markdown 对比速查表。</div>
+                  <div class="ee-copilot-card-desc">自动归纳文中核心参数、配置项与状态速查表。</div>
+                </div>
+
+                <div class="ee-copilot-action-card" data-action="custom">
+                  <div class="ee-copilot-card-icon">🎯</div>
+                  <div class="ee-copilot-card-title">自由定制与定向扩写</div>
+                  <div class="ee-copilot-card-desc">完全自由指定角色、指令、知识参考与约束规则。</div>
                 </div>
               </div>
 
+              <!-- 中部：人工干预与生成控制台 -->
+              <div class="ee-copilot-studio-box">
+                <div class="ee-studio-header">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-weight: 700; font-size: 13.5px; color: var(--ee-curator-text);">🎛️ AI 人工干预与生成设定</span>
+                    <span class="ee-curator-badge-pill" style="background: var(--ee-curator-purple-bg); color: var(--ee-curator-purple); font-size: 11px;">精细可控</span>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="ee-btn-secondary" id="ee-studio-reset-btn" style="height: 26px; padding: 0 10px; font-size: 11.5px;" title="重置回当前模式预设">↺ 恢复默认预设</button>
+                    <button type="button" class="ee-btn-primary" id="ee-studio-generate-btn" style="height: 28px; padding: 0 14px; font-size: 12px; background: var(--ee-curator-purple);">
+                      🚀 开始生成
+                    </button>
+                  </div>
+                </div>
+
+                <div class="ee-studio-body">
+                  <!-- 行 1: 角色设定与人设 -->
+                  <div class="ee-studio-row">
+                    <div class="ee-studio-label">
+                      <span>🤖 角色设定 (Role)</span>
+                    </div>
+                    <div class="ee-studio-field-group">
+                      <div class="ee-studio-pill-group" id="ee-role-pills">
+                        <span class="ee-studio-pill is-active" data-role="architect">资深技术架构师</span>
+                        <span class="ee-studio-pill" data-role="consultant">业务领域专家</span>
+                        <span class="ee-studio-pill" data-role="teacher">通俗化教学博主</span>
+                        <span class="ee-studio-pill" data-role="editor">文档规范评审员</span>
+                        <span class="ee-studio-pill" data-role="custom">自定义角色</span>
+                      </div>
+                      <input type="text" class="ee-studio-input" id="ee-role-prompt-input" value="你是一位资深的知识工程架构师与技术文档撰写专家。" placeholder="输入或自定义大模型的角色定义与人设 (System Role)..." />
+                    </div>
+                  </div>
+
+                  <!-- 行 2: 约束规则与要求 -->
+                  <div class="ee-studio-row">
+                    <div class="ee-studio-label">
+                      <span>📏 约束规则 (Rules)</span>
+                    </div>
+                    <div class="ee-studio-field-group">
+                      <div class="ee-studio-check-group" id="ee-rules-checks">
+                        <label class="ee-studio-check"><input type="checkbox" data-rule="keep-code" checked /> 保留代码与参数原貌</label>
+                        <label class="ee-studio-check"><input type="checkbox" data-rule="clear-outline" checked /> 规范清晰大纲层级</label>
+                        <label class="ee-studio-check"><input type="checkbox" data-rule="pangu-space" checked /> 中英文混排空格</label>
+                        <label class="ee-studio-check"><input type="checkbox" data-rule="use-note-block" /> 采用 > [!NOTE] 备忘块</label>
+                        <label class="ee-studio-check"><input type="checkbox" data-rule="use-table" /> 整理对比表格</label>
+                        <label class="ee-studio-check"><input type="checkbox" data-rule="checklist" /> 附带实施 Checklist</label>
+                      </div>
+                      <input type="text" class="ee-studio-input" id="ee-custom-rules-input" placeholder="补充其他特定规则（如：控制在 800 字内、重点分析重试机制、消除口语化...）" />
+                    </div>
+                  </div>
+
+                  <!-- 行 3: 笔记引用参考 (Reference Notes) -->
+                  <div class="ee-studio-row">
+                    <div class="ee-studio-label">
+                      <span>📚 笔记引用参考</span>
+                    </div>
+                    <div class="ee-studio-field-group">
+                      <div class="ee-ref-notes-container" id="ee-ref-notes-box">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                          <span style="font-size: 11.5px; color: var(--ee-curator-text-muted);">挂载全库相关笔记作为知识参考背景：</span>
+                          <select class="ee-studio-select" id="ee-ref-note-selector">
+                            <option value="">+ 从全库中挑选参考笔记...</option>
+                          </select>
+                        </div>
+                        <div class="ee-ref-chips-row" id="ee-ref-chips">
+                          <!-- 选中的参考笔记药丸及快速推荐 -->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 行 4: 本次执行指令与提示词 -->
+                  <div class="ee-studio-row">
+                    <div class="ee-studio-label">
+                      <span>💬 执行提示词 (Prompt)</span>
+                    </div>
+                    <div class="ee-studio-field-group">
+                      <textarea class="ee-studio-textarea" id="ee-prompt-input" rows="2" placeholder="输入具体的重构/扩写指示，或在此微调当前提示词..."></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 结果预览展示区 -->
               <div class="ee-copilot-result-box" style="display: none;" id="ee-copilot-box">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                   <span style="font-weight: 700; font-size: 13.5px;" id="ee-copilot-box-title">重构内容预览</span>
                   <div style="display: flex; gap: 8px;">
-                    <button type="button" class="ee-btn-primary" id="ee-copilot-replace-btn" style="display: none; background: var(--ee-curator-purple);">一键替换整篇正文</button>
+                    <button type="button" class="ee-btn-primary" id="ee-copilot-replace-btn" style="background: var(--ee-curator-purple);">一键替换整篇正文</button>
                     <button type="button" class="ee-btn-secondary" id="ee-copilot-append-btn">追加到文末</button>
                     <button type="button" class="ee-btn-primary" id="ee-copilot-insert-head-btn">插入到文首</button>
                   </div>
                 </div>
                 <div class="ee-copilot-result-text" id="ee-copilot-content"></div>
+
+                <!-- 结果下方微调追问条 -->
+                <div class="ee-copilot-followup-bar" id="ee-copilot-followup">
+                  <input type="text" class="ee-studio-input" id="ee-followup-input" placeholder="💬 对当前生成结果不满意？在此输入进一步修改指示（如：增加一段代码示例、将第2点缩减）..." />
+                  <button type="button" class="ee-btn-primary" id="ee-followup-btn" style="height: 30px; font-size: 12px; white-space: nowrap; background: var(--ee-curator-purple);">进一步微调</button>
+                </div>
               </div>
             </div>
 
@@ -1450,7 +1547,7 @@ export default {
         };
       }
 
-      // 绑定重构卡片点击
+      // 绑定重构卡片与 AI 生成工作室
       const copilotCards = modalEl.querySelectorAll(".ee-copilot-action-card");
       const copilotBox = modalEl.querySelector("#ee-copilot-box");
       const copilotTitle = modalEl.querySelector("#ee-copilot-box-title");
@@ -1458,101 +1555,358 @@ export default {
       const insertHeadBtn = modalEl.querySelector("#ee-copilot-insert-head-btn");
       const appendBtn = modalEl.querySelector("#ee-copilot-append-btn");
       const replaceBtn = modalEl.querySelector("#ee-copilot-replace-btn");
+
+      const studioResetBtn = modalEl.querySelector("#ee-studio-reset-btn");
+      const studioGenerateBtn = modalEl.querySelector("#ee-studio-generate-btn");
+      const rolePills = modalEl.querySelectorAll("#ee-role-pills .ee-studio-pill");
+      const rolePromptInput = modalEl.querySelector("#ee-role-prompt-input");
+      const rulesCheckGroup = modalEl.querySelector("#ee-rules-checks");
+      const customRulesInput = modalEl.querySelector("#ee-custom-rules-input");
+      const refNoteSelector = modalEl.querySelector("#ee-ref-note-selector");
+      const refChipsContainer = modalEl.querySelector("#ee-ref-chips");
+      const promptInput = modalEl.querySelector("#ee-prompt-input");
+      const followupInput = modalEl.querySelector("#ee-followup-input");
+      const followupBtn = modalEl.querySelector("#ee-followup-btn");
+
+      const PRESETS = {
+        "ai-rewrite": {
+          name: "✨ AI 全文智能重构与深度润色",
+          roleKey: "architect",
+          rules: ["keep-code", "clear-outline", "pangu-space"],
+          prompt: "请对给定的笔记进行全局深层结构重构与表达润色：规范大纲层级、升华表达条理、保留关键技术细节与配置参数、规范 Markdown 排版。",
+          canReplace: true
+        },
+        "tldr": {
+          name: "⚡ AI 提炼 TL;DR 核心要点",
+          roleKey: "consultant",
+          rules: ["use-note-block", "clear-outline"],
+          prompt: "为这篇笔记提炼一段高质量的 TL;DR 核心要点备忘卡片（采用 > [!NOTE] 引用块语法），包含【主题对象】、【核心概念与关键函数/组件】、【3 条核心实施与决策要点】。",
+          canReplace: false
+        },
+        "troubleshoot": {
+          name: "🛠️ 智能生成排错与避坑对策",
+          roleKey: "architect",
+          rules: ["use-table", "checklist"],
+          prompt: "结合笔记主题，生成一份【常见异常排查与应急预案】Markdown 表格，包含【常见现象/报错】、【潜在根因】、【推荐对策与排查路径】，重点聚焦实战避坑经验。",
+          canReplace: false
+        },
+        "cheatsheet": {
+          name: "📋 智能生成核心概念与参数速查表",
+          roleKey: "editor",
+          rules: ["use-table", "keep-code"],
+          prompt: "从笔记中提炼核心参数、关键字段、状态码或配置项，整理为一份结构化 Markdown 对比速查表格（包含【配置项/字段】、【类型/范围】、【取值说明】、【建议设定】）。",
+          canReplace: false
+        },
+        "custom": {
+          name: "🎯 自由定制与定向扩写",
+          roleKey: "custom",
+          rules: ["keep-code", "pangu-space"],
+          prompt: "请结合当前笔记主题，进行定向深入解析与扩写补充：",
+          canReplace: false
+        }
+      };
+
+      const ROLE_PROMPTS = {
+        architect: "你是一位资深的知识工程架构师与技术专家。具备严密的系统性思维、清晰的技术架构视野和严谨的文档标准。",
+        consultant: "你是一位深谙业务落地与最佳实践的业务领域专家顾问。擅长将复杂技术点转化为业务价值、场景化指导和决策建议。",
+        teacher: "你是一位通俗易懂的技术布道师与教学博主。擅长循序渐进、生动举例，用清晰易懂的语言讲透核心逻辑与原理。",
+        editor: "你是一位资深的技术文档规范评审员与技术主编。对排版格式、术语统一性、结构大纲清晰度和表达准确性有极高要求。",
+        custom: "你是一位全能的智能知识助手。"
+      };
+
+      const RULE_DESCRIPTIONS = {
+        "keep-code": "严格保留原文中的所有代码块、函数名称、专业术语、命令参数与配置键值原貌，禁止随意省略或伪代码替换。",
+        "clear-outline": "必须具备清晰分明的大纲层级（使用 #, ##, ### 等），条理清晰严密。",
+        "pangu-space": "中英文与数字之间保持规范自然的盘古空格留白排版，提升阅读质感。",
+        "use-note-block": "对于核心要点、关键注意事项采用 GitHub/Obsidian 风格的 > [!NOTE] 或 > [!WARNING] 引用块语法。",
+        "use-table": "梳理对比内容或多字段参数时，优先使用 Markdown 表格呈现结构化信息。",
+        "checklist": "包含实操步骤或自查建议时，附带 [ ] Markdown Checklist 待办检查清单。"
+      };
+
+      let activeAction = "ai-rewrite";
       let currentGeneratedText = "";
+      const selectedRefNotes = new Map(); // id -> note object
 
+      // 初始化参考笔记下拉框
+      if (refNoteSelector && Array.isArray(vaultNotes)) {
+        const sortedNotes = [...vaultNotes]
+          .filter((n) => n && n.id !== currentNote.id && n.title)
+          .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        sortedNotes.forEach((n) => {
+          const opt = document.createElement("option");
+          opt.value = n.id;
+          opt.textContent = n.title;
+          refNoteSelector.appendChild(opt);
+        });
+
+        refNoteSelector.onchange = () => {
+          const selId = refNoteSelector.value;
+          if (!selId) return;
+          const found = vaultNotes.find((n) => n.id === selId);
+          if (found) {
+            selectedRefNotes.set(found.id, found);
+            renderRefChips();
+          }
+          refNoteSelector.value = "";
+        };
+      }
+
+      // 渲染参考笔记 Chips
+      function renderRefChips() {
+        if (!refChipsContainer) return;
+        refChipsContainer.innerHTML = "";
+
+        // 已经选择的笔记 Chips
+        selectedRefNotes.forEach((note) => {
+          const chip = document.createElement("span");
+          chip.className = "ee-ref-chip";
+          chip.innerHTML = `<span>📌 ${escapeHtml(note.title)}</span><span class="ee-ref-chip-del" data-id="${escapeHtml(note.id)}" title="移除此参考">×</span>`;
+          chip.querySelector(".ee-ref-chip-del").onclick = (e) => {
+            e.stopPropagation();
+            selectedRefNotes.delete(note.id);
+            renderRefChips();
+          };
+          refChipsContainer.appendChild(chip);
+        });
+
+        // 推荐的关联笔记（尚未被选中的）
+        if (Array.isArray(vaultNotes) && vaultNotes.length > 0) {
+          const related = findRelatedNotes(currentNote, vaultNotes, 4);
+          related.forEach((item) => {
+            if (!item.note || selectedRefNotes.has(item.note.id)) return;
+            const sugBtn = document.createElement("button");
+            sugBtn.type = "button";
+            sugBtn.className = "ee-ref-suggest-btn";
+            sugBtn.textContent = `+ 推荐: ${item.note.title}`;
+            sugBtn.title = "点击挂载此笔记作为参考背景";
+            sugBtn.onclick = () => {
+              selectedRefNotes.set(item.note.id, item.note);
+              renderRefChips();
+            };
+            refChipsContainer.appendChild(sugBtn);
+          });
+        }
+      }
+      renderRefChips();
+
+      // 切换/应用预设
+      function applyPreset(actKey) {
+        activeAction = actKey;
+        const preset = PRESETS[actKey] || PRESETS["custom"];
+
+        copilotCards.forEach((c) => {
+          c.classList.toggle("is-selected", c.dataset.action === actKey);
+        });
+
+        // 角色药丸
+        rolePills.forEach((p) => {
+          p.classList.toggle("is-active", p.dataset.role === preset.roleKey);
+        });
+        if (rolePromptInput) {
+          rolePromptInput.value = ROLE_PROMPTS[preset.roleKey] || "";
+        }
+
+        // 规则复选框
+        if (rulesCheckGroup) {
+          rulesCheckGroup.querySelectorAll("input[type='checkbox']").forEach((cb) => {
+            cb.checked = preset.rules.includes(cb.dataset.rule);
+          });
+        }
+
+        // 提示词
+        if (promptInput) {
+          promptInput.value = preset.prompt;
+        }
+
+        if (copilotTitle) {
+          copilotTitle.textContent = preset.name;
+        }
+        if (replaceBtn) {
+          replaceBtn.style.display = preset.canReplace ? "inline-flex" : "none";
+        }
+      }
+
+      // 卡片点击事件：应用预设并滚动至设定区
       copilotCards.forEach((card) => {
-        card.onclick = async () => {
+        card.onclick = () => {
           const act = card.dataset.action;
-          if (replaceBtn) {
-            replaceBtn.style.display = act === "ai-rewrite" ? "inline-flex" : "none";
-          }
-
-          card.classList.add("is-loading-ai");
-          copilotBox.style.display = "flex";
-          copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置 AI / 本机 ACP Agent" : (settings.aiModel || "本地/自定义代理")}）生成中，请稍候...</span>`;
-
-          const rawText = currentNote.contentMarkdown || currentNote.content || "";
-
-          let hasError = false;
-          let errorMsg = "";
-
-          try {
-            if (act === "ai-rewrite") {
-              copilotTitle.textContent = "✨ AI 全文智能重构与深度润色";
-              const sys = "你是一位资深的知识工程架构师与技术文档撰写专家。请对给定的笔记进行全局深层结构重构与表达润色：\n1. 规范大纲层级：重构清晰的层级逻辑（# 概述与技术目标 -> ## 核心架构与原理 -> ## 实施关键步骤与规范 -> ## 注意事项与最佳实践）；\n2. 升华表达：消除口语化、碎片化或凌乱笔记记录，将其升华为结构紧凑、条理分明的高质量知识库文档；\n3. 保留关键细节：严格保留文中所有代码块、专业术语、命令参数、配置键值与重要数据；\n4. 规范排版：中英文与数字间自然留白，排版优雅，行文兼具专业度与可读性；\n5. 直接输出重构润色后的完整 Markdown 正文，严禁输出任何闲聊或开场白。";
-              
-              let promptContent = rawText;
-              if (promptContent.length > 5500) {
-                promptContent = promptContent.slice(0, 5500) + "\n\n(注：原笔记超长，已自适应截取前 5500 字符进行结构重组，优先保证大纲与核心逻辑完整输出)";
-              }
-              const pmt = `笔记标题：《${currentNote.title}》\n\n笔记原始内容：\n${promptContent}`;
-              currentGeneratedText = await callAi(pmt, sys, (msg) => {
-                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
-              });
-            } else if (act === "tldr") {
-              copilotTitle.textContent = "⚡ AI 提炼 TL;DR 核心要点";
-              const sys = "请为这篇笔记提炼一段高质量的 TL;DR 核心要点备忘卡片（采用 > [!NOTE] 引用块语法），包含【主题对象】、【核心概念与关键函数/组件】、【3 条核心实施与决策要点】。直接输出 Markdown 引用块，严禁闲聊。";
-              const pmt = `笔记标题：《${currentNote.title}》\n\n笔记内容：\n${rawText.slice(0, 3000)}`;
-              currentGeneratedText = await callAi(pmt, sys, (msg) => {
-                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
-              });
-            } else if (act === "troubleshoot") {
-              copilotTitle.textContent = "🛠️ 智能生成排错与避坑对策";
-              const sys = "请结合笔记主题，生成一份【常见异常排查与应急预案】Markdown 表格，包含【常见现象/报错】、【潜在根因】、【推荐对策与排查路径】，重点聚焦实战避坑经验。直接输出 Markdown 表格，严禁闲聊。";
-              const pmt = `笔记主题：《${currentNote.title}》\n\n笔记核心内容：\n${rawText.slice(0, 3000)}`;
-              currentGeneratedText = await callAi(pmt, sys, (msg) => {
-                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
-              });
-            } else if (act === "cheatsheet") {
-              copilotTitle.textContent = "📋 智能生成核心概念与参数速查表";
-              const sys = "请从以下笔记中提炼核心参数、关键字段、状态码或配置项，整理为一份结构化 Markdown 对比速查表格（包含【配置项/字段】、【类型/范围】、【取值说明】、【建议设定】）。直接输出 Markdown 表格，严禁闲聊。";
-              const pmt = `笔记主题：《${currentNote.title}》\n\n笔记核心内容：\n${rawText.slice(0, 3000)}`;
-              currentGeneratedText = await callAi(pmt, sys, (msg) => {
-                copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
-              });
-            }
-          } catch (aiErr) {
-            console.warn("[Note Curator] AI 生成失败，降级为本地规则模板:", aiErr);
-            if (context.ui?.showNotice) {
-              context.ui.showNotice(`AI 服务提示: ${aiErr.message || "未能连接"}，已自动降级为本地高精知识模板`, { type: "info" });
-            }
-            if (act === "ai-rewrite") {
-              copilotTitle.textContent = "✨ 本地结构化大纲重组与排版规范 (离线模式)";
-              currentGeneratedText = buildStructuredKnowledgeOutline(currentNote.title, rawText, settings);
-            } else if (act === "tldr") {
-              copilotTitle.textContent = "⚡ TL;DR 核心要点备忘 (本地规则)";
-              const kws = extractNoteTerms(currentNote.title, rawText).slice(0, 5);
-              currentGeneratedText = `> [!NOTE] 核心要点备忘 (TL;DR)\n> - **主题对象**：${currentNote.title}\n> - **核心概念**：${kws.map((k) => `\`${k}\``).join(" / ") || "系统规范"}\n> - **实施目标**：规范工程落地路径，保障业务逻辑与生产环境的健壮性。\n\n`;
-            } else if (act === "troubleshoot") {
-              copilotTitle.textContent = "🛠️ 异常排查与避坑指南 (通用结构模板)";
-              currentGeneratedText = `\n\n### 常见异常排查与应急预案 (Troubleshooting)\n| 常见现象 / 报错 | 潜在根本原因 | 推荐对策与排查路径 |\n|---|---|---|\n| 预期行为不符 / 运行报错 | 配置参数缺失、版本不兼容或边界条件异常 | 复查输入参数与环境变量，查看详细堆栈日志定位根因 |\n| 请求超时 / 执行性能迟缓 | 资源死锁、复杂查询未命中索引或网络波动 | 检查网络与外部依赖连通性，分析耗时调用链路并配置熔断超时 |\n| 权限受限 / 认证凭据失效 | 访问 Token 过期或角色鉴权策略未放行 | 重新生成认证凭据，核对服务访问控制列表 (ACL) 与权限分配 |\n`;
-            } else if (act === "cheatsheet") {
-              copilotTitle.textContent = "📋 核心概念与参数速查表 (通用结构模板)";
-              currentGeneratedText = `\n\n### 核心概念与关键参数速查 (Cheatsheet)\n| 概念 / 参数项 | 类型 / 范围 | 核心作用与语义 | 推荐设定 / 最佳实践 |\n|---|---|---|---|\n| \`DEBUG_MODE\` | Boolean (\`true\` / \`false\`) | 调试日志输出总控开关 | 生产环境保持 \`false\`，排查故障时按需开启 |\n| \`TIMEOUT_LIMIT\` | Integer (秒/毫秒) | 任务或请求最长等待时限 | 依据业务 SLA 设定合理超时，避免长连接挂起 |\n| \`RETRY_POLICY\` | Integer (0~5) | 异常失败后的重试策略 | 配合指数退避机制，建议最大重试 3 次 |\n`;
-            }
-
-            hasError = true;
-            errorMsg = aiErr.message || "未能连接 AI 引擎";
-          } finally {
-            card.classList.remove("is-loading-ai");
-          }
-
-          if (hasError) {
-            copilotContent.innerHTML = `<div style="padding: 10px 14px; margin-bottom: 12px; border-radius: 6px; background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; font-size: 12px; color: var(--ee-curator-text); line-height: 1.6;">
-              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                <span style="flex: 1; min-width: 240px;">⚠️ <strong>AI 引擎未完成响应</strong>（${escapeHtml(errorMsg)}）。已为您自动生成【本地高精结构化知识架构】。</span>
-                <button type="button" class="ee-btn-primary" id="ee-retry-current-card" style="height: 26px; padding: 0 10px; font-size: 11.5px; background: var(--ee-curator-purple); white-space: nowrap;">🔄 点击重试</button>
-              </div>
-            </div><pre style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.7;">${escapeHtml(currentGeneratedText)}</pre>`;
-            const retryBtn = copilotContent.querySelector("#ee-retry-current-card");
-            if (retryBtn) {
-              retryBtn.onclick = () => card.click();
-            }
-          } else {
-            copilotContent.textContent = currentGeneratedText;
+          applyPreset(act);
+          const studioBox = modalEl.querySelector(".ee-copilot-studio-box");
+          if (studioBox) {
+            studioBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
           }
         };
       });
+
+      // 角色药丸点击
+      rolePills.forEach((pill) => {
+        pill.onclick = () => {
+          rolePills.forEach((p) => p.classList.remove("is-active"));
+          pill.classList.add("is-active");
+          const rKey = pill.dataset.role;
+          if (rolePromptInput && ROLE_PROMPTS[rKey]) {
+            rolePromptInput.value = ROLE_PROMPTS[rKey];
+          }
+        };
+      });
+
+      // 恢复默认预设
+      if (studioResetBtn) {
+        studioResetBtn.onclick = () => {
+          applyPreset(activeAction);
+          if (customRulesInput) customRulesInput.value = "";
+          selectedRefNotes.clear();
+          renderRefChips();
+        };
+      }
+
+      // 组装 System Prompt
+      function buildSystemPrompt() {
+        const role = rolePromptInput?.value?.trim() || "你是一位资深的知识工程架构师与技术专家。";
+        const selectedRules = [];
+        if (rulesCheckGroup) {
+          rulesCheckGroup.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
+            const desc = RULE_DESCRIPTIONS[cb.dataset.rule];
+            if (desc) selectedRules.push(desc);
+          });
+        }
+        const customRule = customRulesInput?.value?.trim();
+        if (customRule) {
+          selectedRules.push(customRule);
+        }
+
+        let sys = role;
+        if (selectedRules.length > 0) {
+          sys += "\n\n【必须严格遵守的约束规则】:\n" + selectedRules.map((r, i) => `${i + 1}. ${r}`).join("\n");
+        }
+        sys += "\n\n【输出要求】: 直接输出高质量 Markdown 格式内容，严禁输出任何闲聊、开场白、问候语或总结客套。";
+        return sys;
+      }
+
+      // 组装 User Prompt
+      function buildUserPrompt(taskOverride) {
+        const rawText = currentNote.contentMarkdown || currentNote.content || "";
+        let truncatedText = rawText;
+        if (truncatedText.length > 5500) {
+          truncatedText = truncatedText.slice(0, 5500) + "\n\n(注：原笔记超长，已自适应截取前 5500 字符进行处理)";
+        }
+
+        let refSection = "";
+        if (selectedRefNotes.size > 0) {
+          refSection = "\n\n--- 【知识库参考笔记背景 (Reference Notes)】 ---\n";
+          selectedRefNotes.forEach((note) => {
+            const noteBody = (note.contentMarkdown || note.content || "").replace(/```[\s\S]*?```/g, "[代码块已折叠]").slice(0, 1000);
+            refSection += `### 参考笔记：《${note.title}》\n${noteBody}\n\n`;
+          });
+        }
+
+        const taskPrompt = taskOverride || promptInput?.value?.trim() || PRESETS[activeAction]?.prompt || "请对当前笔记进行智能重构与扩写：";
+
+        return `【当前处理笔记】\n标题：《${currentNote.title}》\n\n正文内容：\n${truncatedText}${refSection}\n\n--- 【具体任务指示 (Prompt)】 ---\n${taskPrompt}`;
+      }
+
+      // 核心生成执行函数
+      async function triggerGeneration(customUserPrompt, customSysPrompt) {
+        if (!studioGenerateBtn || !copilotBox || !copilotContent) return;
+
+        studioGenerateBtn.classList.add("is-loading-ai");
+        studioGenerateBtn.disabled = true;
+        copilotBox.style.display = "flex";
+        copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">🤖 正在连接 AI 引擎（${settings.aiProvider === "edgeever" ? "EdgeEver 客户端配置 AI / 本机 ACP Agent" : (settings.aiModel || "本地/自定义代理")}）生成中，请稍候...</span>`;
+
+        const sys = customSysPrompt || buildSystemPrompt();
+        const pmt = customUserPrompt || buildUserPrompt();
+
+        const rawText = currentNote.contentMarkdown || currentNote.content || "";
+        let hasError = false;
+        let errorMsg = "";
+
+        try {
+          currentGeneratedText = await callAi(pmt, sys, (msg) => {
+            copilotContent.innerHTML = `<span style="color: var(--ee-curator-primary);">${escapeHtml(msg)}</span>`;
+          });
+        } catch (aiErr) {
+          console.warn("[Note Curator] AI 生成失败，降级为本地规则模板:", aiErr);
+          if (context.ui?.showNotice) {
+            context.ui.showNotice(`AI 服务提示: ${aiErr.message || "未能连接"}，已自动降级为本地知识模板`, { type: "info" });
+          }
+
+          if (activeAction === "ai-rewrite") {
+            copilotTitle.textContent = "✨ 本地结构化大纲重组与排版规范 (离线模式)";
+            currentGeneratedText = buildStructuredKnowledgeOutline(currentNote.title, rawText, settings);
+          } else if (activeAction === "tldr") {
+            copilotTitle.textContent = "⚡ TL;DR 核心要点备忘 (本地规则)";
+            const kws = extractNoteTerms(currentNote.title, rawText).slice(0, 5);
+            currentGeneratedText = `> [!NOTE] 核心要点备忘 (TL;DR)\n> - **主题对象**：${currentNote.title}\n> - **核心概念**：${kws.map((k) => `\`${k}\``).join(" / ") || "系统规范"}\n> - **实施目标**：规范工程落地路径，保障业务逻辑与生产环境的健壮性。\n\n`;
+          } else if (activeAction === "troubleshoot") {
+            copilotTitle.textContent = "🛠️ 异常排查与避坑指南 (通用结构模板)";
+            currentGeneratedText = `\n\n### 常见异常排查与应急预案 (Troubleshooting)\n| 常见现象 / 报错 | 潜在根本原因 | 推荐对策与排查路径 |\n|---|---|---|\n| 预期行为不符 / 运行报错 | 配置参数缺失、版本不兼容或边界条件异常 | 复查输入参数与环境变量，查看详细堆栈日志定位根因 |\n| 请求超时 / 执行性能迟缓 | 资源死锁、复杂查询未命中索引或网络波动 | 检查网络与外部依赖连通性，分析耗时调用链路并配置熔断超时 |\n| 权限受限 / 认证凭据失效 | 访问 Token 过期或角色鉴权策略未放行 | 重新生成认证凭据，核对服务访问控制列表 (ACL) 与权限分配 |\n`;
+          } else if (activeAction === "cheatsheet") {
+            copilotTitle.textContent = "📋 核心概念与参数速查表 (通用结构模板)";
+            currentGeneratedText = `\n\n### 核心概念与关键参数速查 (Cheatsheet)\n| 概念 / 参数项 | 类型 / 范围 | 核心作用与语义 | 推荐设定 / 最佳实践 |\n|---|---|---|---|\n| \`DEBUG_MODE\` | Boolean (\`true\` / \`false\`) | 调试日志输出总控开关 | 生产环境保持 \`false\`，排查故障时按需开启 |\n| \`TIMEOUT_LIMIT\` | Integer (秒/毫秒) | 任务或请求最长等待时限 | 依据业务 SLA 设定合理超时，避免长连接挂起 |\n| \`RETRY_POLICY\` | Integer (0~5) | 异常失败后的重试策略 | 配合指数退避机制，建议最大重试 3 次 |\n`;
+          } else {
+            currentGeneratedText = `\n\n### 定向分析与扩写备忘\n- **目标对象**：${currentNote.title}\n- **说明**：AI 连接未完成，请检查 AI 提供商配置或本地代理网络后重试。\n`;
+          }
+
+          hasError = true;
+          errorMsg = aiErr.message || "未能连接 AI 引擎";
+        } finally {
+          studioGenerateBtn.classList.remove("is-loading-ai");
+          studioGenerateBtn.disabled = false;
+        }
+
+        if (hasError) {
+          copilotContent.innerHTML = `<div style="padding: 10px 14px; margin-bottom: 12px; border-radius: 6px; background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; font-size: 12px; color: var(--ee-curator-text); line-height: 1.6;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span style="flex: 1; min-width: 240px;">⚠️ <strong>AI 引擎未完成响应</strong>（${escapeHtml(errorMsg)}）。已为您自动生成【本地高精结构化知识架构】。</span>
+              <button type="button" class="ee-btn-primary" id="ee-retry-current-card" style="height: 26px; padding: 0 10px; font-size: 11.5px; background: var(--ee-curator-purple); white-space: nowrap;">🔄 点击重试</button>
+            </div>
+          </div><pre style="white-space: pre-wrap; font-family: inherit; margin: 0; line-height: 1.7;">${escapeHtml(currentGeneratedText)}</pre>`;
+          const retryBtn = copilotContent.querySelector("#ee-retry-current-card");
+          if (retryBtn) {
+            retryBtn.onclick = () => triggerGeneration(customUserPrompt, customSysPrompt);
+          }
+        } else {
+          copilotContent.textContent = currentGeneratedText;
+        }
+
+        copilotBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+
+      // 生成按钮绑定
+      if (studioGenerateBtn) {
+        studioGenerateBtn.onclick = () => triggerGeneration();
+      }
+
+      // 微调追问绑定
+      if (followupBtn && followupInput) {
+        const handleFollowup = async () => {
+          const followText = followupInput.value.trim();
+          if (!followText || !currentGeneratedText) return;
+
+          followupBtn.disabled = true;
+          followupBtn.textContent = "微调中...";
+
+          const followUserPrompt = `【原始笔记标题】: 《${currentNote.title}》\n\n【上一次生成的内容】:\n${currentGeneratedText}\n\n【进一步微调指示】:\n${followText}\n\n请在上一次生成内容的基础上，严格按照上述微调指示进行修改完善，直接输出修改后的完整 Markdown 内容。`;
+          const followSysPrompt = buildSystemPrompt();
+
+          await triggerGeneration(followUserPrompt, followSysPrompt);
+          followupInput.value = "";
+          followupBtn.disabled = false;
+          followupBtn.textContent = "进一步微调";
+        };
+
+        followupBtn.onclick = handleFollowup;
+        followupInput.onkeydown = (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleFollowup();
+          }
+        };
+      }
+
+      // 初始化应用当前预设
+      applyPreset("ai-rewrite");
 
       if (replaceBtn) {
         replaceBtn.onclick = async () => {
