@@ -730,6 +730,37 @@ export default {
     });
 
     /**
+     * 读取持久化自定义预设列表 (优先 context.storage，兜底 localStorage)
+     */
+    async function getStoredCustomPresets() {
+      try {
+        if (context.storage?.get) {
+          const data = await context.storage.get("ee_curator_custom_presets");
+          if (data) return typeof data === "string" ? JSON.parse(data) : data;
+        }
+      } catch (e) {}
+      try {
+        const raw = localStorage.getItem("ee_curator_custom_presets");
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return [];
+    }
+
+    /**
+     * 写入持久化自定义预设列表
+     */
+    async function saveStoredCustomPresets(presets) {
+      try {
+        if (context.storage?.set) {
+          await context.storage.set("ee_curator_custom_presets", presets);
+        }
+      } catch (e) {}
+      try {
+        localStorage.setItem("ee_curator_custom_presets", JSON.stringify(presets));
+      } catch (e) {}
+    }
+
+    /**
      * 智能调用 AI 引擎（支持 EdgeEver 客户端原生已配置的 AI，以及自定义/本地代理）
      */
     async function callAi(prompt, systemPrompt, statusCallback = () => {}) {
@@ -1031,6 +1062,7 @@ export default {
       const auditResult = auditNote(currentNote, vaultNotes);
       // 执行本地排版格式化预计算
       const rawContent = currentNote.contentMarkdown || currentNote.content || currentNote.plainText || "";
+      const isBlankNote = !rawContent || rawContent.trim().length <= 15;
       formattedCache = formatMarkdown(rawContent, settings);
 
       // 构建 DOM
@@ -1049,7 +1081,8 @@ export default {
               <div class="ee-curator-header-info">
                 <div class="ee-curator-title-row">
                   <span class="ee-curator-title" title="${escapeHtml(currentNote.title)}">${escapeHtml(currentNote.title || "无标题笔记")}</span>
-                  <span class="ee-curator-badge-pill">v1.0.0</span>
+                  <span class="ee-curator-badge-pill">v1.2.0</span>
+                  ${isBlankNote ? '<span class="ee-curator-badge-pill" style="background: rgba(46, 160, 67, 0.15); color: var(--ee-curator-success); font-weight: 600;">🌱 空白笔记</span>' : ''}
                 </div>
                 <div class="ee-curator-header-sub">
                   <span>正文约 ${auditResult.wordCount} 字</span>
@@ -1083,6 +1116,20 @@ export default {
           <div class="ee-curator-body">
             <!-- TAB 1: 笔记体检 -->
             <div class="ee-curator-panel is-active" id="tab-audit">
+              ${isBlankNote ? `
+              <div class="ee-blank-note-banner">
+                <div class="ee-blank-banner-left">
+                  <div class="ee-blank-banner-icon">🌱</div>
+                  <div class="ee-blank-banner-text">
+                    <div class="ee-blank-banner-title">检测到当前为空白笔记（字数仅 ${auditResult.wordCount} 字）</div>
+                    <div class="ee-blank-banner-desc">无需面对空白页发愁！立即使用 AI 起草助手结合人设与预设，一键构思生成完整高质量正文。</div>
+                  </div>
+                </div>
+                <button type="button" class="ee-btn-primary" id="ee-quick-blank-draft-btn" style="background: var(--ee-curator-purple); font-size: 12px; height: 30px; padding: 0 14px; white-space: nowrap;">
+                  ✨ 一键进入 AI 起草模式
+                </button>
+              </div>
+              ` : ""}
               <div class="ee-audit-summary-grid">
                 <div class="ee-audit-score-card">
                   <div class="ee-audit-big-ring ${auditResult.gradeColor}">
@@ -1196,7 +1243,13 @@ export default {
             <div class="ee-curator-panel" id="tab-copilot">
               <!-- 顶部：模式预设卡片网格 -->
               <div class="ee-copilot-card-grid">
-                <div class="ee-copilot-action-card is-ai-card is-selected" data-action="ai-rewrite">
+                <div class="ee-copilot-action-card is-ai-card ${isBlankNote ? 'is-selected' : ''}" data-action="blank-draft">
+                  <div class="ee-copilot-card-icon">🌱</div>
+                  <div class="ee-copilot-card-title">空白笔记从零起草</div>
+                  <div class="ee-copilot-card-desc">针对空白笔记，结合角色规则与主题深度起草长文正文。</div>
+                </div>
+
+                <div class="ee-copilot-action-card is-ai-card ${!isBlankNote ? 'is-selected' : ''}" data-action="ai-rewrite">
                   <div class="ee-copilot-card-icon">✨</div>
                   <div class="ee-copilot-card-title">AI 全文深度重构与润色</div>
                   <div class="ee-copilot-card-desc">规范大纲逻辑、优化段落过渡，补充知识归纳。</div>
@@ -1235,9 +1288,39 @@ export default {
                     <span class="ee-curator-badge-pill" style="background: var(--ee-curator-purple-bg); color: var(--ee-curator-purple); font-size: 11px;">精细可控</span>
                   </div>
                   <div style="display: flex; gap: 8px; align-items: center;">
-                    <button type="button" class="ee-btn-secondary" id="ee-studio-reset-btn" style="height: 26px; padding: 0 10px; font-size: 11.5px;" title="重置回当前模式预设">↺ 恢复默认预设</button>
+                    <button type="button" class="ee-btn-secondary" id="ee-studio-reset-btn" style="height: 26px; padding: 0 10px; font-size: 11.5px;" title="重置回当前模式预设">↺ 恢复默认</button>
                     <button type="button" class="ee-btn-primary" id="ee-studio-generate-btn" style="height: 28px; padding: 0 14px; font-size: 12px; background: var(--ee-curator-purple);">
                       🚀 开始生成
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 预设方案切换与持久化管理条 -->
+                <div class="ee-studio-preset-bar">
+                  <div class="ee-preset-bar-left">
+                    <span class="ee-preset-bar-label">🔖 预设方案：</span>
+                    <select class="ee-studio-select" id="ee-preset-selector">
+                      <optgroup label="系统内置方案" id="ee-preset-opt-system">
+                        <option value="blank-draft">🌱 空白笔记从零起草</option>
+                        <option value="ai-rewrite">✨ AI 全文重构与润色</option>
+                        <option value="tldr">⚡ 一键提炼 TL;DR 核心要点</option>
+                        <option value="troubleshoot">🛠️ 异常排查与避坑指南</option>
+                        <option value="cheatsheet">📋 核心概念与参数速查表</option>
+                        <option value="custom">🎯 自由定制与定向扩写</option>
+                      </optgroup>
+                      <optgroup label="⭐ 我的自定义预设" id="ee-preset-opt-custom">
+                      </optgroup>
+                    </select>
+                  </div>
+                  <div class="ee-preset-bar-actions">
+                    <button type="button" class="ee-btn-secondary" id="ee-preset-save-btn" style="height: 26px; padding: 0 10px; font-size: 11.5px;" title="将当前角色、规则与提示词保存为新预设">
+                      💾 保存为新预设
+                    </button>
+                    <button type="button" class="ee-btn-secondary" id="ee-preset-update-btn" style="display: none; height: 26px; padding: 0 10px; font-size: 11.5px;" title="将当前修改覆盖保存到当前自定义预设">
+                      🔄 覆盖保存
+                    </button>
+                    <button type="button" class="ee-btn-danger" id="ee-preset-del-btn" style="display: none; height: 26px; padding: 0 10px; font-size: 11.5px;" title="删除当前选中的自定义预设">
+                      🗑️ 删除
                     </button>
                   </div>
                 </div>
@@ -1398,21 +1481,27 @@ export default {
       // 绑定 Tab 切换
       const tabs = modalEl.querySelectorAll(".ee-curator-tab");
       const panels = modalEl.querySelectorAll(".ee-curator-panel");
+      function switchTab(tabName) {
+        tabs.forEach((t) => t.classList.toggle("is-active", t.dataset.tab === tabName));
+        panels.forEach((p) => p.classList.toggle("is-active", p.id === `tab-${tabName}`));
+        if (tabName === "network") {
+          setTimeout(renderKnowledgeGraph, 50);
+        }
+      }
       tabs.forEach((tab) => {
-        tab.onclick = () => {
-          tabs.forEach((t) => t.classList.remove("is-active"));
-          panels.forEach((p) => p.classList.remove("is-active"));
-          tab.classList.add("is-active");
-          const targetId = `tab-${tab.dataset.tab}`;
-          const targetPanel = modalEl.querySelector(`#${targetId}`);
-          if (targetPanel) targetPanel.classList.add("is-active");
+        tab.onclick = () => switchTab(tab.dataset.tab);
+      });
 
-          // 如果切到网络图谱，重新绘制 canvas
-          if (tab.dataset.tab === "network") {
-            setTimeout(renderKnowledgeGraph, 50);
+      // 绑定空白笔记一键进入起草模式按钮
+      const quickBlankDraftBtn = modalEl.querySelector("#ee-quick-blank-draft-btn");
+      if (quickBlankDraftBtn) {
+        quickBlankDraftBtn.onclick = () => {
+          switchTab("copilot");
+          if (typeof applyPreset === "function") {
+            applyPreset("blank-draft");
           }
         };
-      });
+      }
 
       // 关闭事件
       const closeBtn = modalEl.querySelector("#ee-curator-close");
@@ -1548,6 +1637,8 @@ export default {
       }
 
       // 绑定重构卡片与 AI 生成工作室
+      let customPresets = await getStoredCustomPresets();
+
       const copilotCards = modalEl.querySelectorAll(".ee-copilot-action-card");
       const copilotBox = modalEl.querySelector("#ee-copilot-box");
       const copilotTitle = modalEl.querySelector("#ee-copilot-box-title");
@@ -1568,7 +1659,20 @@ export default {
       const followupInput = modalEl.querySelector("#ee-followup-input");
       const followupBtn = modalEl.querySelector("#ee-followup-btn");
 
+      const presetSelector = modalEl.querySelector("#ee-preset-selector");
+      const presetOptCustom = modalEl.querySelector("#ee-preset-opt-custom");
+      const presetSaveBtn = modalEl.querySelector("#ee-preset-save-btn");
+      const presetUpdateBtn = modalEl.querySelector("#ee-preset-update-btn");
+      const presetDelBtn = modalEl.querySelector("#ee-preset-del-btn");
+
       const PRESETS = {
+        "blank-draft": {
+          name: "🌱 空白笔记从零深度起草",
+          roleKey: "architect",
+          rules: ["clear-outline", "keep-code", "pangu-space", "use-note-block"],
+          prompt: `请以《${currentNote.title || "技术主题"}》为主题，结合给定的专业人设与约束规则，从零起草撰写一篇结构完整、论述严谨、条理分明的高质量知识库长文：\n1. 背景与核心价值：阐述痛点背景与为什么重要；\n2. 核心架构与关键逻辑：系统化剖析核心原理、关键技术点或设计理念；\n3. 实战步骤与落地方案：条理清晰的落地指南与实操细节；\n4. 避坑指南与最佳实践：高频易错点及防护建议。`,
+          canReplace: true
+        },
         "ai-rewrite": {
           name: "✨ AI 全文智能重构与深度润色",
           roleKey: "architect",
@@ -1623,9 +1727,38 @@ export default {
         "checklist": "包含实操步骤或自查建议时，附带 [ ] Markdown Checklist 待办检查清单。"
       };
 
-      let activeAction = "ai-rewrite";
+      let activeAction = isBlankNote ? "blank-draft" : "ai-rewrite";
       let currentGeneratedText = "";
       const selectedRefNotes = new Map(); // id -> note object
+
+      // 渲染预设方案下拉选单
+      function renderPresetDropdown() {
+        if (!presetOptCustom || !presetSelector) return;
+        presetOptCustom.innerHTML = "";
+
+        if (customPresets.length === 0) {
+          const emptyOpt = document.createElement("option");
+          emptyOpt.value = "";
+          emptyOpt.disabled = true;
+          emptyOpt.textContent = "暂无自定义预设 (可在右侧保存当前)";
+          presetOptCustom.appendChild(emptyOpt);
+        } else {
+          customPresets.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = `⭐ ${p.name}`;
+            presetOptCustom.appendChild(opt);
+          });
+        }
+
+        // 同步选中项
+        presetSelector.value = activeAction;
+
+        // 根据是否为自定义预设，切换覆盖/删除操作按钮显示
+        const isCustom = customPresets.some((p) => p.id === activeAction);
+        if (presetUpdateBtn) presetUpdateBtn.style.display = isCustom ? "inline-flex" : "none";
+        if (presetDelBtn) presetDelBtn.style.display = isCustom ? "inline-flex" : "none";
+      }
 
       // 初始化参考笔记下拉框
       if (refNoteSelector && Array.isArray(vaultNotes)) {
@@ -1689,11 +1822,29 @@ export default {
       }
       renderRefChips();
 
-      // 切换/应用预设
+      // 切换/应用预设 (支持系统内置与用户自定义预设)
       function applyPreset(actKey) {
         activeAction = actKey;
-        const preset = PRESETS[actKey] || PRESETS["custom"];
+        let preset = PRESETS[actKey];
 
+        if (!preset) {
+          const cp = customPresets.find((p) => p.id === actKey);
+          if (cp) {
+            preset = {
+              name: `⭐ ${cp.name}`,
+              roleKey: cp.roleKey || "custom",
+              rolePrompt: cp.rolePrompt || "",
+              rules: cp.rules || [],
+              customRule: cp.customRule || "",
+              prompt: cp.prompt || "",
+              canReplace: cp.canReplace !== false
+            };
+          } else {
+            preset = PRESETS["custom"];
+          }
+        }
+
+        // 卡片高亮切换
         copilotCards.forEach((c) => {
           c.classList.toggle("is-selected", c.dataset.action === actKey);
         });
@@ -1703,19 +1854,29 @@ export default {
           p.classList.toggle("is-active", p.dataset.role === preset.roleKey);
         });
         if (rolePromptInput) {
-          rolePromptInput.value = ROLE_PROMPTS[preset.roleKey] || "";
+          rolePromptInput.value = preset.rolePrompt || ROLE_PROMPTS[preset.roleKey] || "";
         }
 
         // 规则复选框
         if (rulesCheckGroup) {
           rulesCheckGroup.querySelectorAll("input[type='checkbox']").forEach((cb) => {
-            cb.checked = preset.rules.includes(cb.dataset.rule);
+            cb.checked = (preset.rules || []).includes(cb.dataset.rule);
           });
+        }
+
+        // 自定义补充规则
+        if (customRulesInput) {
+          customRulesInput.value = preset.customRule || "";
         }
 
         // 提示词
         if (promptInput) {
-          promptInput.value = preset.prompt;
+          promptInput.value = preset.prompt || "";
+          if (actKey === "blank-draft") {
+            promptInput.placeholder = "输入文章核心主题、构思提纲、想要涵盖的关键词或业务场景要求...";
+          } else {
+            promptInput.placeholder = "输入具体的重构/扩写指示，或在此微调当前提示词...";
+          }
         }
 
         if (copilotTitle) {
@@ -1723,10 +1884,13 @@ export default {
         }
         if (replaceBtn) {
           replaceBtn.style.display = preset.canReplace ? "inline-flex" : "none";
+          replaceBtn.textContent = (isBlankNote || actKey === "blank-draft") ? "✨ 一键写入空白正文" : "一键替换整篇正文";
         }
+
+        renderPresetDropdown();
       }
 
-      // 卡片点击事件：应用预设并滚动至设定区
+      // 卡片点击事件：应用预设并平滑滚动至设定区
       copilotCards.forEach((card) => {
         card.onclick = () => {
           const act = card.dataset.action;
@@ -1737,6 +1901,120 @@ export default {
           }
         };
       });
+
+      // 预设方案下拉选单切换
+      if (presetSelector) {
+        presetSelector.onchange = () => {
+          const val = presetSelector.value;
+          if (val) applyPreset(val);
+        };
+      }
+
+      // 💾 保存当前为新预设
+      if (presetSaveBtn) {
+        presetSaveBtn.onclick = async () => {
+          let defaultName = "";
+          if (activeAction.startsWith("custom_")) {
+            const cur = customPresets.find((p) => p.id === activeAction);
+            defaultName = cur ? cur.name + " (副本)" : "我的自定义方案";
+          } else if (PRESETS[activeAction]) {
+            defaultName = PRESETS[activeAction].name.replace(/^[^\w\u4e00-\u9fa5]+/, "").trim();
+          } else {
+            defaultName = "技术写作方案";
+          }
+
+          let name = "";
+          if (window.prompt) {
+            name = window.prompt("请输入新自定义预设方案的名称：", defaultName);
+          }
+          if (!name || !name.trim()) return;
+          name = name.trim();
+
+          let activeRoleKey = "custom";
+          rolePills.forEach((p) => {
+            if (p.classList.contains("is-active")) activeRoleKey = p.dataset.role;
+          });
+
+          const activeRules = [];
+          if (rulesCheckGroup) {
+            rulesCheckGroup.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
+              if (cb.dataset.rule) activeRules.push(cb.dataset.rule);
+            });
+          }
+
+          const newPreset = {
+            id: "custom_" + Date.now(),
+            name: name,
+            roleKey: activeRoleKey,
+            rolePrompt: rolePromptInput?.value?.trim() || "",
+            rules: activeRules,
+            customRule: customRulesInput?.value?.trim() || "",
+            prompt: promptInput?.value?.trim() || "",
+            canReplace: true
+          };
+
+          customPresets.push(newPreset);
+          await saveStoredCustomPresets(customPresets);
+
+          if (context.ui?.showNotice) {
+            context.ui.showNotice(`✅ 已成功保存自定义预设【${name}】！下次可直接调用。`, { type: "info" });
+          }
+
+          applyPreset(newPreset.id);
+        };
+      }
+
+      // 🔄 覆盖保存当前自定义预设
+      if (presetUpdateBtn) {
+        presetUpdateBtn.onclick = async () => {
+          const foundIdx = customPresets.findIndex((p) => p.id === activeAction);
+          if (foundIdx === -1) return;
+
+          let activeRoleKey = "custom";
+          rolePills.forEach((p) => {
+            if (p.classList.contains("is-active")) activeRoleKey = p.dataset.role;
+          });
+
+          const activeRules = [];
+          if (rulesCheckGroup) {
+            rulesCheckGroup.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
+              if (cb.dataset.rule) activeRules.push(cb.dataset.rule);
+            });
+          }
+
+          customPresets[foundIdx].roleKey = activeRoleKey;
+          customPresets[foundIdx].rolePrompt = rolePromptInput?.value?.trim() || "";
+          customPresets[foundIdx].rules = activeRules;
+          customPresets[foundIdx].customRule = customRulesInput?.value?.trim() || "";
+          customPresets[foundIdx].prompt = promptInput?.value?.trim() || "";
+
+          await saveStoredCustomPresets(customPresets);
+
+          if (context.ui?.showNotice) {
+            context.ui.showNotice(`✅ 已覆盖保存预设【${customPresets[foundIdx].name}】！`, { type: "info" });
+          }
+        };
+      }
+
+      // 🗑️ 删除当前自定义预设
+      if (presetDelBtn) {
+        presetDelBtn.onclick = async () => {
+          const found = customPresets.find((p) => p.id === activeAction);
+          if (!found) return;
+
+          const ok = window.confirm ? window.confirm(`确定要删除自定义预设【${found.name}】吗？`) : true;
+          if (!ok) return;
+
+          customPresets = customPresets.filter((p) => p.id !== activeAction);
+          await saveStoredCustomPresets(customPresets);
+
+          if (context.ui?.showNotice) {
+            context.ui.showNotice(`已删除预设【${found.name}】。`, { type: "info" });
+          }
+
+          applyPreset(isBlankNote ? "blank-draft" : "ai-rewrite");
+        };
+      }
 
       // 角色药丸点击
       rolePills.forEach((pill) => {
@@ -1783,7 +2061,7 @@ export default {
         return sys;
       }
 
-      // 组装 User Prompt
+      // 组装 User Prompt (对空白笔记和正常长文做自适应区分)
       function buildUserPrompt(taskOverride) {
         const rawText = currentNote.contentMarkdown || currentNote.content || "";
         let truncatedText = rawText;
@@ -1801,6 +2079,11 @@ export default {
         }
 
         const taskPrompt = taskOverride || promptInput?.value?.trim() || PRESETS[activeAction]?.prompt || "请对当前笔记进行智能重构与扩写：";
+
+        // 如果是空白笔记或从零起草模式
+        if (activeAction === "blank-draft" || isBlankNote) {
+          return `【创作任务】：从零起草高质量知识库文章正文\n文章预定标题：《${currentNote.title || "未命名主题"}》\n${rawText.trim() ? `\n【当前已有零散要点或大纲记录】：\n${truncatedText}\n` : ""}${refSection}\n\n--- 【起草指令与主题提纲要求】 ---\n${taskPrompt}`;
+        }
 
         return `【当前处理笔记】\n标题：《${currentNote.title}》\n\n正文内容：\n${truncatedText}${refSection}\n\n--- 【具体任务指示 (Prompt)】 ---\n${taskPrompt}`;
       }
@@ -1831,7 +2114,10 @@ export default {
             context.ui.showNotice(`AI 服务提示: ${aiErr.message || "未能连接"}，已自动降级为本地知识模板`, { type: "info" });
           }
 
-          if (activeAction === "ai-rewrite") {
+          if (activeAction === "blank-draft") {
+            copilotTitle.textContent = "🌱 本地知识库大纲与正文起草 (离线模板)";
+            currentGeneratedText = `# ${currentNote.title || "知识方案"}\n\n> [!NOTE] 核心目标与概述\n> 本文旨在深入系统化阐述 ${currentNote.title || "该主题"} 的核心架构、关键实施步骤与最佳实践规范。\n\n## 1. 背景与核心价值\n- **业务痛点**：梳理生产环境下亟待解决的核心问题；\n- **实施目标**：提升可复用性与工程化质量。\n\n## 2. 核心架构与原理设计\n- **逻辑模型**：明确数据流转路径与模块职责划分；\n- **关键技术点**：深入分析核心函数、API 协议与状态流转。\n\n## 3. 实战落地与操作步骤\n1. 环境准备与依赖配置；\n2. 关键业务逻辑实施；\n3. 单元验证与联调校验。\n\n## 4. 异常排查与避坑实践\n- **常见问题**：边界参数缺失、超时及鉴权失败；\n- **防御对策**：健全日志监控、配置熔断并增加重试保护。\n`;
+          } else if (activeAction === "ai-rewrite") {
             copilotTitle.textContent = "✨ 本地结构化大纲重组与排版规范 (离线模式)";
             currentGeneratedText = buildStructuredKnowledgeOutline(currentNote.title, rawText, settings);
           } else if (activeAction === "tldr") {
@@ -1905,13 +2191,16 @@ export default {
         };
       }
 
-      // 初始化应用当前预设
-      applyPreset("ai-rewrite");
+      // 初始化应用当前预设 (若空白笔记自动激活空白起草模式)
+      applyPreset(isBlankNote ? "blank-draft" : "ai-rewrite");
 
       if (replaceBtn) {
         replaceBtn.onclick = async () => {
           if (!currentGeneratedText) return;
           await applyFormattedContent(currentGeneratedText);
+          if (isBlankNote && context.ui?.showNotice) {
+            context.ui.showNotice("✨ 正文已成功写入空白笔记！", { type: "info" });
+          }
         };
       }
 

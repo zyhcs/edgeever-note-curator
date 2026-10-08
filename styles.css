@@ -1111,3 +1111,96 @@
   border-radius: 50%;
   background: var(--ee-curator-success);
 }
+
+/* ==================== 13. 空白笔记起草与预设管理样式 ==================== */
+.ee-blank-note-banner {
+  background: linear-gradient(135deg, rgba(46, 160, 67, 0.1) 0%, rgba(130, 80, 223, 0.1) 100%);
+  border: 1px solid rgba(46, 160, 67, 0.35);
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.ee-blank-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ee-blank-banner-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.ee-blank-banner-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--ee-curator-text);
+  margin-bottom: 3px;
+}
+
+.ee-blank-banner-desc {
+  font-size: 12px;
+  color: var(--ee-curator-text-muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 680px) {
+  .ee-blank-note-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* 预设方案持久化切换栏 */
+.ee-studio-preset-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgba(128, 128, 128, 0.035);
+  border-bottom: 1px solid var(--ee-curator-border);
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ee-preset-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ee-preset-bar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ee-curator-text);
+}
+
+.ee-preset-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ee-btn-danger {
+  background: transparent;
+  border: 1px solid rgba(207, 34, 46, 0.35);
+  color: var(--ee-curator-danger);
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ee-btn-danger:hover {
+  background: rgba(207, 34, 46, 0.1);
+  border-color: var(--ee-curator-danger);
+}
+
